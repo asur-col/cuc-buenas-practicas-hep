@@ -1,412 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Lab 6 — Fallos e incidentes: diagnóstico, reparación y redundancia (HEP)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 6 — Simulación de fallos y respuesta a incidentes | Buenas Prácticas de Redes HEP</title>
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#222;max-width:900px;margin:2rem auto;padding:0 1rem}
-h1{font-size:1.5rem;border-bottom:2px solid #0b5ed7;padding-bottom:.5rem}
-h2{font-size:1.25rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
-table{border-collapse:collapse;width:100%;margin:1rem 0}
-th,td{border:1px solid #ddd;padding:.5rem;text-align:left;font-size:.9rem}
-th{background:#f4f6f8}
-code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.3rem;font-family:ui-monospace,SFMono-Regular,monospace}
-pre{background:#f3f4f6;padding:1rem;border-radius:.6rem;overflow:auto;font-size:.85rem}
-.nota{background:#fff3cd;border:1px solid #ffecb5;padding:.75rem;border-radius:.6rem;margin:1rem 0}
-.ok{color:#0a7a1a;font-weight:bold}
-.warn{color:#9a5a00;font-weight:bold}
-.error{color:#b3261e;font-weight:bold}
-.paso{border:1px solid #e1e4e8;border-radius:.75rem;padding:1rem;margin:1rem 0;background:#fafbfc}
-.paso h3{margin-top:0;font-size:1.1rem;border-bottom:1px solid #e1e4e8;padding-bottom:.4rem}
-.paso .obj{font-weight:bold;color:#0b5ed7}
-.paso .cmd{color:#d63384}
-.paso .salida{color:#222;white-space:pre-wrap;font-size:.8rem}
-.paso .verif{color:#0a7a1a}
-.paso .error{color:#b3261e}
-.tiempo{font-size:.85rem;color:#666;margin-left:.5rem}
+:root{--tinta:#14213d;--mar:#0b7285;--mar-oscuro:#0b3d4d;--arena:#f4a261;
+--fondo:#fbfaf6;--panel:#fff;--linea:#e5e0d5;--ok:#1b7f4b;--no:#b42318;--gris:#6b7280}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+color:var(--tinta);background:var(--fondo);line-height:1.65}
+header.hero{padding:3.2rem 1.5rem 2.4rem;color:#fff;
+background:linear-gradient(135deg,#0b3d4d,var(--mar))}
+.wrap{max-width:64rem;margin:0 auto}
+.eyebrow{margin:0;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;
+color:#ffe8c2;font-weight:600}
+h1{margin:.35rem 0 .6rem;font-size:clamp(1.9rem,4.5vw,2.9rem);line-height:1.12}
+.sub{margin:0;max-width:46rem;color:#d7f0f4;font-size:1.06rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.15rem}
+.meta span{font-size:.8rem;padding:.28rem .7rem;border:1px solid rgba(255,255,255,.35);
+border-radius:999px;background:rgba(255,255,255,.08)}
+.layout{display:grid;grid-template-columns:15rem minmax(0,1fr);gap:2.2rem;
+max-width:76rem;margin:0 auto;padding:2rem 1.5rem 5rem}
+nav.toc{position:sticky;top:1rem;align-self:start;font-size:.9rem;
+border-right:1px solid var(--linea);padding-right:1rem}
+nav.toc p{margin:.2rem 0 .6rem;font-weight:700;font-size:.78rem;
+letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+nav.toc a{display:block;padding:.18rem 0;color:var(--tinta);text-decoration:none}
+nav.toc a:hover{color:var(--mar);text-decoration:underline}
+main{min-width:0}section{margin:0 0 2.4rem}
+h2{font-size:1.35rem;margin:0 0 .7rem;padding-bottom:.35rem;
+border-bottom:2px solid var(--arena)}
+h3{font-size:1.05rem;margin:1.4rem 0 .4rem}
+p{margin:.55rem 0}a{color:var(--mar)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+font-size:.88em;background:#f0ece2;padding:.08rem .32rem;border-radius:.25rem}
+pre{margin:.7rem 0;padding:.9rem 1rem;overflow-x:auto;background:#10202a;color:#e8f1f2;
+border-radius:.45rem;font-size:.85rem;line-height:1.5}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+blockquote{margin:.8rem 0;padding:.85rem 1rem;background:#fff7ea;
+border-left:4px solid var(--arena);border-radius:.25rem;font-size:.94rem}
+blockquote p{margin:.2rem 0}
+table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.92rem}
+th,td{padding:.55rem .6rem;border:1px solid var(--linea);text-align:left;vertical-align:top}
+th{background:#f2efe6;font-size:.82rem;letter-spacing:.03em;text-transform:uppercase}
+tr:nth-child(even) td{background:#fcfbf7}
+ul,ol{margin:.5rem 0 .7rem;padding-left:1.5rem}li{margin:.18rem 0}
+hr{border:0;border-top:1px solid var(--linea);margin:1.6rem 0}
+footer{border-top:1px solid var(--linea);padding:1.4rem 1.5rem;text-align:center;
+font-size:.84rem;color:var(--gris)}
+@media(max-width:820px){.layout{grid-template-columns:1fr;padding-top:1.2rem}
+nav.toc{position:static;border-right:0;border-bottom:1px solid var(--linea);
+padding:0 0 .8rem}nav.toc a{display:inline-block;margin-right:.9rem}}
+@media print{header.hero{background:#0b3d4d!important;-webkit-print-color-adjust:exact}
+nav.toc{display:none}.layout{display:block;max-width:none;padding:1rem}
+pre{white-space:pre-wrap}}
 </style>
 </head>
 <body>
-<h1>Lab 6 — Fallos e incidentes: diagnóstico, reparación y redundancia</h1>
-<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Lab 6</strong> · <strong>Tiempo estimado:</strong> 90 min · <strong>Semana:</strong> S6</p>
-
-<h2>Objetivo</h2>
-<p>Red con DOS caminos entre la LAN de pc1 (r1) y la LAN de srv1 (r4). Llega ROTA: el enlace r1–r2 nace apagado (<code>administratively down</code>) y no hay rutas entre las LANs. Debes:</p>
-<ol>
-<li>Diagnosticar el estado inicial (interfaces down, sin IPs, sin routing)</li>
-<li>Hardening en los 4 routers (r1, r2, r3, r4)</li>
-<li>Direccionar todas las interfaces según plan de direccionamiento</li>
-<li>Levantar el enlace caído (r1 eth1 / r2 eth0)</li>
-<li>Configurar rutas estáticas con redundancia: camino principal (r1→r3→r4) AD=1 y camino flotante (r1→r2→r4) AD=10</li>
-<li>Verificar conectividad extremo a extremo y failover automático al caer el principal</li>
-<li>Escribir informe de incidente</li>
-</ol>
-
-<div class="nota"><strong>Guía verificada:</strong> ejecutada sobre estación desechable (<code>oco-tmp-lab06-station</code>, imagen <code>labs/hep-redes-lab06:1.0.0</code>). Salidas reales de diagnóstico, configuración 4 routers, rutas principal/flotante, tests de conectividad y failover.</div>
-
-<h2>Topología</h2>
-<pre>
-pc1 (192.168.1.10) ── r1 eth0
-                     ├── eth1 (10.10.12.1/30) ── r2 eth0 (10.10.12.2/30) ── r2 eth1 (10.10.24.1/30) ── r4 eth1 (10.10.24.2/30) ── r4 eth0 (10.50.4.1/24) ── srv1 (10.50.4.10) [WEB 80]
-                     └── eth2 (10.10.13.1/30) ── r3 eth0 (10.10.13.2/30) ── r3 eth1 (10.10.34.1/30) ── r4 eth2 (10.10.34.2/30)
-</pre>
-<p><strong>Camino principal:</strong> r1 → r3 → r4 (AD=1) · <strong>Camino flotante:</strong> r1 → r2 → r4 (AD=10)</p>
-
-<h2>Plan de direccionamiento</h2>
-<table>
-<tr><th>Enlace</th><th>Red</th><th>r1</th><th>r2</th><th>r3</th><th>r4</th><th>Hosts</th></tr>
-<tr><td>pc1–r1</td><td>192.168.1.0/24</td><td>.1</td><td></td><td></td><td></td><td>pc1=.10</td></tr>
-<tr><td>r1–r2</td><td>10.10.12.0/30</td><td>.1</td><td>.2</td><td></td><td></td><td></td></tr>
-<tr><td>r1–r3</td><td>10.10.13.0/30</td><td>.1</td><td></td><td>.2</td><td></td><td></td></tr>
-<tr><td>r2–r4</td><td>10.10.24.0/30</td><td></td><td>.1</td><td></td><td>.2</td><td></td></tr>
-<tr><td>r3–r4</td><td>10.10.34.0/30</td><td></td><td></td><td>.1</td><td>.2</td><td></td></tr>
-<tr><td>r4–srv1</td><td>10.50.4.0/24</td><td></td><td></td><td></td><td>.1</td><td>srv1=.10</td></tr>
-</table>
-
-<h2>Guía paso a paso (10 pasos)</h2>
-
-<div class="paso">
-<h3>Paso 1 — Diagnóstico inicial: estado de fábrica roto <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Verificar que r1 eth1 está <code>administratively down</code>, ningún router tiene IPs ni rutas, Telnet habilitado.</p>
-<p class="cmd">Comando exacto (en cada <code>netcli rX</code>):</p>
-<pre>
-enable
-show running-config
-show ip interface brief
-</pre>
-<p class="salida">Salida real (estación <code>oco-tmp-lab06-station</code>):</p>
-<pre>
-r1# hostname r1 / line vty transport input all
-Interface: eth0 unassigned UP/UP, eth1 unassigned ADMIN DOWN/DOWN, eth2 unassigned UP/UP
-
-r2# hostname r2 / line vty transport input all
-Interface: eth0 unassigned UP/DOWN (link down por r1), eth1 unassigned UP/UP
-
-r3# hostname r3 / line vty transport input all
-Interface: eth0/eth1 unassigned UP/UP
-
-r4# hostname r4 / line vty transport input all
-Interface: eth0/eth1/eth2 unassigned UP/UP
-</pre>
-<p class="verif">Verificación: r1 eth1 admin down = causa raíz; 4 routers sin IPs, sin routing, Telnet activo.</p>
-<p class="error">Error típico: no documentar el fallo inicial. Corrección: capturar <code>show ip interface brief</code> de los 4 routers como evidencia.</p>
-<p><strong>Verificador:</strong> criterio de diagnóstico de incidente.</p>
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Universidad de la Costa · Buenas Prácticas de Redes HEP</p>
+    <h1>Lab 6 — Simulación de fallos y respuesta a incidentes</h1>
+    <p class="sub">Los de Ventas (pc1, LAN 10.50.1.0/24) reportan que no alcanzan el</p>
+    <div class="meta">
+      <span>Laboratorio de la HEP</span><span>Nube simulada con floci</span>
+      <span>Sin cuenta de AWS</span><span>Sin Internet</span>
+    </div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="Contenido">
+    <p>Contenido</p>
+    <a href="#el-incidente">El incidente</a>
+<a href="#plan-de-direccionamiento-usalo-es-el-del-verificador">Plan de direccionamiento (úsalo, es el del verificador)</a>
+<a href="#paso-1-diagnostica-recoge-la-evidencia-para-tu-informe">Paso 1 — Diagnostica (recoge la evidencia para tu informe)</a>
+<a href="#paso-2-repara-el-enlace-y-direcciona">Paso 2 — Repara el enlace y direcciona</a>
+<a href="#paso-3-rutas-con-respaldo-lo-que-evita-el-proximo-incidente">Paso 3 — Rutas con respaldo (lo que evita el próximo incidente)</a>
+<a href="#paso-4-verifica-y-documenta">Paso 4 — Verifica y documenta</a>
+<a href="#paso-5-el-verificador-tira-la-red-a-proposito">Paso 5 — El verificador tira la red (a propósito)</a>
+  </nav>
+  <main>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Valor:</strong> 5,0 (5 criterios × 1,0) · <strong>Tiempo estimado:</strong> 90 minutos · <strong>Individual.</strong></p>
+<h2 id="el-incidente">El incidente</h2>
+<p>Los de Ventas (<code>pc1</code>, LAN <code>10.50.1.0/24</code>) reportan que <strong>no alcanzan el servidor</strong> <code>srv1</code> (LAN <code>10.50.4.0/24</code>). La red tiene <strong>dos caminos</strong> entre las LANs: por <code>r2</code> y por <code>r3</code> — pero algo pasó. Tu trabajo como encargado de red: <strong>diagnosticar con evidencia, reparar, dejar el servicio resiliente y escribir el informe del incidente</strong>.</p>
+<pre><code>                    ┌──── r2 ────┐
+   pc1 ── eth0 r1 ──┤            ├── r4 eth0 ── srv1
+   (10.50.1.10)     └──── r3 ────┘   (10.50.4.10)</code></pre>
+<h2 id="plan-de-direccionamiento-usalo-es-el-del-verificador">Plan de direccionamiento (úsalo, es el del verificador)</h2>
+<table><thead><tr><th>Enlace</th><th>Subred</th><th>r1/r2</th><th>r2/r4</th><th>r1/r3</th><th>r3/r4</th></tr></thead><tbody><tr><td>IPs</td><td>/30</td><td>r1=.1, r2=.2 (10.50.12.0/30)</td><td>r2=.1, r4=.2 (10.50.24.0/30)</td><td>r1=.1, r3=.2 (10.50.13.0/30)</td><td>r3=.1, r4=.2 (10.50.34.0/30)</td></tr></tbody></table>
+<ul><li>LAN Ventas: <code>pc1</code> = 10.50.1.10/24, gateway 10.50.1.1 (r1)</li><li>LAN Servidores: <code>srv1</code> = 10.50.4.10/24, gateway 10.50.4.1 (r4)</li></ul>
+<h2 id="paso-1-diagnostica-recoge-la-evidencia-para-tu-informe">Paso 1 — Diagnostica (recoge la evidencia para tu informe)</h2>
+<pre><code>netcli r1
+r1&gt; enable
+r1# show ip interface brief          # ¿ves algo raro en eth1?
+r1# show ip route
+$ ip netns exec lab-pc1 ping -c1 10.50.4.10
+$ ip netns exec lab-pc1 traceroute 10.50.4.10</code></pre>
+<p>Anota las salidas: son la sección <strong>Evidencia</strong> de tu informe.</p>
+<h2 id="paso-2-repara-el-enlace-y-direcciona">Paso 2 — Repara el enlace y direcciona</h2>
+<p>El enlace roto hay que levantarlo con <code>no shutdown</code> y toda la malla hay que direccionarla (r1, r2, r3, r4 con el plan de arriba). Ejemplo de r1:</p>
+<pre><code>r1# configure terminal
+r1(config)# interface eth0
+r1(config-if)# ip address 10.50.1.1 255.255.255.0
+r1(config-if)# no shutdown
+r1(config-if)# exit
+r1(config)# interface eth1
+r1(config-if)# no shutdown
+r1(config-if)# ip address 10.50.12.1 255.255.255.252
+r1(config-if)# exit
+r1(config)# interface eth2
+r1(config-if)# ip address 10.50.13.1 255.255.255.252
+r1(config-if)# no shutdown
+r1(config-if)# exit</code></pre>
+<p>(Y no olvides los PCs: <code>ip addr add …</code> + <code>ip route add default via …</code>.)</p>
+<h2 id="paso-3-rutas-con-respaldo-lo-que-evita-el-proximo-incidente">Paso 3 — Rutas con respaldo (lo que evita el próximo incidente)</h2>
+<p><strong>Ida</strong> (en <code>r1</code>, hacia la LAN del servidor): principal por <code>r2</code>, flotante por <code>r3</code> — el último número es la <strong>métrica</strong>:</p>
+<pre><code>r1(config)# ip route 10.50.4.0 255.255.255.0 10.50.12.2 10
+r1(config)# ip route 10.50.4.0 255.255.255.0 10.50.13.2 20</code></pre>
+<p><strong>Vuelta</strong> (en <code>r4</code>, hacia la LAN de Ventas): principal por <code>r3</code>, flotante por <code>r2</code>:</p>
+<pre><code>r4(config)# ip route 10.50.1.0 255.255.255.0 10.50.34.1 10
+r4(config)# ip route 10.50.1.0 255.255.255.0 10.50.24.1 20</code></pre>
+<p>Y en <code>r2</code>/<code>r3</code> las rutas de tránsito:</p>
+<pre><code>r2(config)# ip route 10.50.1.0 255.255.255.0 10.50.12.1
+r2(config)# ip route 10.50.4.0 255.255.255.0 10.50.24.2
+r3(config)# ip route 10.50.1.0 255.255.255.0 10.50.13.1
+r3(config)# ip route 10.50.4.0 255.255.255.0 10.50.34.2</code></pre>
+<blockquote><p><strong>Por qué asimétrico:</strong> con rutas estáticas, si la ida y la vuelta prefirieran el mismo camino y este cayera en su tramo inicial, la vuelta seguiría intentando por un router que ya no sabe cruzar. Repartir los caminos principales (ida por r2, vuelta por r3) hace que la caída de r1–r2 solo fuerce a la ida a conmutar, y la vuelta ya iba por r3.</p></blockquote>
+<h2 id="paso-4-verifica-y-documenta">Paso 4 — Verifica y documenta</h2>
+<pre><code>[pc1] $ ping -c1 10.50.4.10          # servicio restaurado
+r1# show ip route                     # aparecen las dos rutas (métricas)
+r4# show ip route</code></pre>
+<p>Después escribe <strong><code>/workspace/incidente.md</code></strong> con estas cuatro secciones (el verificador las exige):</p>
+<ol><li><strong>Causa raíz</strong> — qué pasó realmente (no el síntoma).</li><li><strong>Evidencia</strong> — comandos y salidas que recogiste en el diagnóstico.</li><li><strong>Acciones correctivas</strong> — qué hiciste, paso a paso.</li><li><strong>Prevención</strong> — qué harás para que no se repita.</li></ol>
+<h2 id="paso-5-el-verificador-tira-la-red-a-proposito">Paso 5 — El verificador tira la red (a propósito)</h2>
+<p>Cuando ejecutes <code>revisar</code>, el servidor <strong>apagará el enlace r1–r2</strong> para comprobar que tu red sigue viva por el otro camino, y luego lo restaurará. Si solo configuraste un camino, ese criterio se pondrá en rojo: la resiliencia no se declara, se demuestra.</p>
+<pre><code>$ revisar</code></pre>
+  </main>
 </div>
-
-<div class="paso">
-<h3>Paso 2 — Hardening y direccionamiento en r1 <span class="tiempo">≈15 min</span></h3>
-<p class="obj">Seguridad + IPs en 3 interfaces + levantar eth1 (enlace a r2).</p>
-<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R1-HEP
-banner motd #Lab 06 - Fallos Incidentes#
-interface eth0
-ip address 192.168.1.1 255.255.255.0
-exit
-interface eth1
-ip address 10.10.12.1 255.255.255.252
-no shutdown
-exit
-interface eth2
-ip address 10.10.13.1 255.255.255.252
-exit
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-</pre>
-<p class="salida">Salida real (<code>show ip interface brief</code>):</p>
-<pre>
-R1-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   192.168.1.1/24  YES manual up                     up
-eth1                   10.10.12.1/30   YES manual up                     up
-eth2                   10.10.13.1/30   YES manual up                     up
-</pre>
-<p class="verif">Verificación: 3 interfaces UP/UP, eth1 levantada (<code>no shutdown</code>), hardening completo.</p>
-<p class="error">Error típico: olvidar <code>no shutdown</code> en eth1 → enlace r1-r2 sigue caído. Corrección: siempre <code>no shutdown</code> tras IP.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento y reparación de enlace.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 3 — Hardening y direccionamiento en r2 <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Seguridad + IPs en eth0 (a r1) y eth1 (a r4).</p>
-<p class="cmd">Comando exacto (en <code>netcli r2</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R2-HEP
-banner motd #Lab 06 - Fallos Incidentes#
-interface eth0
-ip address 10.10.12.2 255.255.255.252
-exit
-interface eth1
-ip address 10.10.24.1 255.255.255.252
-exit
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-</pre>
-<p class="salida">Salida real (<code>show ip interface brief</code>):</p>
-<pre>
-R2-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   10.10.12.2/30   YES manual up                     up
-eth1                   10.10.24.1/30   YES manual up                     up
-</pre>
-<p class="verif">Verificación: eth0 UP/UP (link r1-r2 restaurado), eth1 UP/UP, hardening completo.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 4 — Hardening y direccionamiento en r3 <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Seguridad + IPs en eth0 (a r1) y eth1 (a r4) — camino principal.</p>
-<p class="cmd">Comando exacto (en <code>netcli r3</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R3-HEP
-banner motd #Lab 06 - Fallos Incidentes#
-interface eth0
-ip address 10.10.13.2 255.255.255.252
-exit
-interface eth1
-ip address 10.10.34.1 255.255.255.252
-exit
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-</pre>
-<p class="salida">Salida real (<code>show ip interface brief</code>):</p>
-<pre>
-R3-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   10.10.13.2/30   YES manual up                     up
-eth1                   10.10.34.1/30   YES manual up                     up
-</pre>
-<p class="verif">Verificación: ambos enlaces UP/UP, hardening completo.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 5 — Hardening y direccionamiento en r4 <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Seguridad + IPs en eth0 (LAN srv1), eth1 (a r2), eth2 (a r3).</p>
-<p class="cmd">Comando exacto (en <code>netcli r4</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R4-HEP
-banner motd #Lab 06 - Fallos Incidentes#
-interface eth0
-ip address 10.50.4.1 255.255.255.0
-exit
-interface eth1
-ip address 10.10.24.2 255.255.255.252
-exit
-interface eth2
-ip address 10.10.34.2 255.255.255.252
-exit
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-</pre>
-<p class="salida">Salida real (<code>show ip interface brief</code>):</p>
-<pre>
-R4-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   10.50.4.1/24    YES manual up                     up
-eth1                   10.10.24.2/30   YES manual up                     up
-eth2                   10.10.34.2/30   YES manual up                     up
-</pre>
-<p class="verif">Verificación: 3 interfaces UP/UP, hardening completo.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 6 — Rutas estáticas con redundancia (principal + flotante) <span class="tiempo">≈15 min</span></h3>
-<p class="obj">Configurar rutas en los 4 routers: r1 y r4 con dos rutas (AD=1 principal, AD=10 flotante); r2 y r3 con rutas de retorno.</p>
-<p class="cmd">Comando exacto (en cada router):</p>
-<pre>
-# r1: principal via r3 (AD=1), flotante via r2 (AD=10)
-ip route 10.50.4.0 255.255.255.0 10.10.13.2
-ip route 10.50.4.0 255.255.255.0 10.10.12.2 10
-
-# r2: retorno a pc1 y a srv1
-ip route 192.168.1.0 255.255.255.0 10.10.12.1
-ip route 10.50.4.0 255.255.255.0 10.10.24.2
-
-# r3: retorno a pc1 y a srv1
-ip route 192.168.1.0 255.255.255.0 10.10.13.1
-ip route 10.50.4.0 255.255.255.0 10.10.34.2
-
-# r4: principal a pc1 via r2 (AD=1), flotante via r3 (AD=10) + rutas a enlaces intermedios
-ip route 192.168.1.0 255.255.255.0 10.10.24.1
-ip route 192.168.1.0 255.255.255.0 10.10.34.1 10
-ip route 10.10.12.0 255.255.255.252 10.10.24.1
-ip route 10.10.13.0 255.255.255.252 10.10.34.1
-</pre>
-<p class="salida">Salida real (<code>show ip route</code> en r1 y r4):</p>
-<pre>
-R1-HEP# show ip route
-C  10.10.12.0/30 directamente conectada, eth1
-C  10.10.13.0/30 directamente conectada, eth2
-O  10.50.4.0/24 via 10.10.13.2, eth2      ! principal (AD=1)
-O  10.50.4.0/24 via 10.10.12.2, eth1      ! flotante (AD=10)
-C  192.168.1.0/24 directamente conectada, eth0
-
-R4-HEP# show ip route
-C  10.10.24.0/30 directamente conectada, eth1
-C  10.10.34.0/30 directamente conectada, eth2
-C  10.50.4.0/24 directamente conectada, eth0
-O  192.168.1.0/24 via 10.10.24.1, eth1    ! principal (AD=1)
-O  192.168.1.0/24 via 10.10.34.1, eth2    ! flotante (AD=10)
-O  10.10.12.0/30 via 10.10.24.1, eth1
-O  10.10.13.0/30 via 10.10.34.1, eth2
-</pre>
-<p class="verif">Verificación: r1 tiene DOS rutas a 10.50.4.0/24 (principal eth2→r3, flotante eth1→r2); r4 tiene DOS rutas a 192.168.1.0/24 (principal eth1→r2, flotante eth2→r3).</p>
-<p class="error">Error típico: rutas sin AD o AD invertido. Corrección: <code>ip route ... 1</code> para principal, <code>... 10</code> para flotante.</p>
-<p><strong>Verificador:</strong> criterio de redundancia y rutas estáticas.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 7 — Configurar pc1 y srv1 <span class="tiempo">≈5 min</span></h3>
-<p class="obj">IPs en sus respectivas LANs con gateway hacia su router.</p>
-<p class="cmd">Comando exacto (desde host de la estación):</p>
-<pre>
-# pc1 (LAN r1: 192.168.1.0/24, gw 192.168.1.1)
-ip netns exec lab-pc1 ip addr add 192.168.1.10/24 dev eth0
-ip netns exec lab-pc1 ip link set eth0 up
-ip netns exec lab-pc1 ip route add default via 192.168.1.1
-
-# srv1 (LAN r4: 10.50.4.0/24, gw 10.50.4.1)
-ip netns exec lab-srv1 ip addr add 10.50.4.10/24 dev eth0
-ip netns exec lab-srv1 ip link set eth0 up
-ip netns exec lab-srv1 ip route add default via 10.50.4.1
-</pre>
-<p class="salida">Salida real: pc1 192.168.1.10/24 gw 192.168.1.1; srv1 10.50.4.10/24 gw 10.50.4.1.</p>
-<p class="verif">Verificación: <code>ip netns exec lab-pc1 ip route</code> muestra default via 192.168.1.1.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento hosts.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 8 — Verificar conectividad extremo a extremo (camino principal) <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Confirmar que pc1 ↔ srv1 funciona por el camino principal r1→r3→r4.</p>
-<p class="cmd">Comando exacto:</p>
-<pre>
-ip netns exec lab-pc1 ping -c 2 10.50.4.10
-ip netns exec lab-srv1 ping -c 2 192.168.1.10
-ip netns exec lab-pc1 timeout 5 bash -c "< /dev/tcp/10.50.4.10/80 && echo OPEN || echo CLOSED"
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-PING 10.50.4.10 ... 64 bytes from 10.50.4.10: icmp_seq=1 ttl=61 time=0.097 ms
-2 packets transmitted, 2 received, 0% packet loss
-
-PING 192.168.1.10 ... 64 bytes from 192.168.1.10: icmp_seq=1 ttl=61 time=0.040 ms
-2 packets transmitted, 2 received, 0% packet loss
-
-OPEN
-</pre>
-<p class="verif">Verificación: 0% pérdida bidireccional; TTL=61 = 3 saltos (pc1→r1→r3→r4→srv1) = camino principal activo; web OPEN.</p>
-<p class="error">Error típico: <code>Destination Net Unreachable</code> = faltan rutas estáticas. Corrección: revisar <code>show ip route</code> en los 4 routers.</p>
-<p><strong>Verificador:</strong> criterio de conectividad y camino principal.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 9 — Probar failover: apagar camino principal y verificar flotante <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Simular caída del enlace principal (r1 eth2) y confirmar que el tráfico usa automáticamente el camino flotante r1→r2→r4.</p>
-<p class="cmd">Comando exacto:</p>
-<pre>
-# En r1: apagar eth2 (enlace a r3)
-netcli r1 enable configure terminal interface eth2 shutdown end
-
-# Verificar que ruta principal desaparece y queda la flotante
-netcli r1 show ip route
-
-# Test conectividad tras fallo
-ip netns exec lab-pc1 ping -c 2 10.50.4.10
-ip netns exec lab-pc1 timeout 5 bash -c "< /dev/tcp/10.50.4.10/80 && echo OPEN || echo CLOSED"
-
-# Restaurar enlace principal
-netcli r1 enable configure terminal interface eth2 no shutdown end
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R1-HEP# show ip route (tras shutdown eth2)
-C  10.10.12.0/30 directamente conectada, eth1
-O  10.50.4.0/24 via 10.10.12.2, eth1      ! SOLO ruta flotante queda
-C  192.168.1.0/24 directamente conectada, eth0
-
-PING 10.50.4.10 ... 64 bytes from 10.50.4.10: icmp_seq=1 ttl=61
-2 packets transmitted, 2 received, 0% packet loss
-OPEN
-</pre>
-<p class="verif">Verificación: ruta principal desaparece, ruta flotante (via 10.10.12.2 eth1) asume el tráfico; ping y web siguen funcionando 0% loss = failover automático exitoso.</p>
-<p class="error">Error típico: failover no ocurre = AD flotante no mayor que principal, o ruta flotante mal escrita. Corrección: AD flotante > AD principal (10 > 1).</p>
-<p><strong>Verificador:</strong> criterio de redundancia y failover.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 10 — Informe de incidente y evidencias finales <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Documentar: fallo inicial, diagnóstico, reparación, configuración de redundancia, pruebas de failover.</p>
-<p class="cmd">Comandos de evidencia:</p>
-<pre>
-# Estado inicial (fallo)
-netcli r1 show ip interface brief   # eth1 admin down
-netcli r1..r4 show running-config   # sin IPs, Telnet
-
-# Reparación y config final
-netcli r1..r4 show running-config   # hardening, IPs, rutas
-netcli r1 show ip route             # dos rutas a 10.50.4.0/24
-netcli r4 show ip route             # dos rutas a 192.168.1.0/24
-
-# Tests funcionales
-pc1 -> srv1 ping        0% loss (TTL=61, 3 hops principal)
-srv1 -> pc1 ping        0% loss
-pc1 -> srv1:80 web      OPEN
-
-# Failover test
-r1 eth2 shutdown
-pc1 -> srv1 ping        0% loss (ruta flotante via r2)
-pc1 -> srv1:80 web      OPEN
-r1 eth2 no shutdown     # restaurar
-</pre>
-<p class="salida">Salida real: capturas de estado inicial (eth1 down), config final 4 routers, tablas de routing con rutas O principal/flotante, 4 tests de conectividad, test de failover exitoso.</p>
-<p class="verif">Verificación: informe incluye diagnóstico (enlace caído), acciones correctivas, configuración redundante, y evidencia de failover automático.</p>
-<p class="error">Error típico: informe sin evidencia de failover real. Corrección: capturar <code>show ip route</code> ANTES y DESPUÉS de apagar enlace principal.</p>
-<p><strong>Verificador:</strong> criterio de informe de incidente (manual por docente).</p>
-</div>
-
-<h2>Si algo falla</h2>
-<table>
-<tr><th>Síntoma</th><th>Causa probable</th><th>Corrección</th></tr>
-<tr><td>Destination Net Unreachable</td><td>Faltan rutas estáticas en algún router</td><td>Verificar <code>show ip route</code> en TODOS; cada router debe tener ruta a redes remotas</td></tr>
-<tr><td>Failover no funciona</td><td>AD flotante ≤ AD principal, o ruta flotante incorrecta</td><td>Principal AD=1, flotante AD=10; next-hop correcto en cada router</td></tr>
-<tr><td>Enlace r1-r2 no sube</td><td>Falta <code>no shutdown</code> en r1 eth1</td><td>r1 eth1: <code>ip address ...</code> + <code>no shutdown</code></td></tr>
-<tr><td>Rutas no aparecen en show ip route</td><td>Comando <code>ip route</code> no ejecutado en config mode o sin write memory</td><td>Reejecutar <code>ip route</code> en configure terminal + <code>write memory</code></td></tr>
-<tr><td>Ping unidireccional</td><td>Rutas de retorno faltantes (r2, r3, r4 sin rutas a 192.168.1.0/24)</td><td>Configurar rutas simétricas en ambos sentidos</td></tr>
-</table>
-
-<h2>Entregable y nota</h2>
-<p>Ejecuta <code>revisar</code> en tu estación. Entrega: diagrama topología con IPs, evidencia estado inicial (r1 eth1 down), capturas <code>show running-config</code> 4 routers (hardening, IPs, rutas), <code>show ip route</code> r1 y r4 (dos rutas cada uno), resultados ping bidireccional (0% loss, TTL=61), test web OPEN, y prueba de failover (ruta principal desaparece, flotante asume, conectividad mantenida).</p>
-
-<div class="nota"><strong>Evidencia de pruebas:</strong> estación <code>oco-tmp-lab06-station</code> (imagen <code>labs/hep-redes-lab06:1.0.0</code>) con 4 routers, rutas principal/flotante, failover verificado (apagado r1 eth2 → tráfico por r2). Estación destruida sin residuos.</div>
+<footer>
+  Buenas Prácticas de Redes HEP · Universidad de la Costa ·
+  nube simulada con <code>floci</code>, sin Internet
+</footer>
 </body>
 </html>

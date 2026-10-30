@@ -1,376 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Lab 2 — VLSM y direccionamiento (HEP)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 2 — VLSM y direccionamiento | Buenas Prácticas de Redes HEP</title>
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#222;max-width:900px;margin:2rem auto;padding:0 1rem}
-h1{font-size:1.5rem;border-bottom:2px solid #0b5ed7;padding-bottom:.5rem}
-h2{font-size:1.25rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
-table{border-collapse:collapse;width:100%;margin:1rem 0}
-th,td{border:1px solid #ddd;padding:.5rem;text-align:left;font-size:.9rem}
-th{background:#f4f6f8}
-code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.3rem;font-family:ui-monospace,SFMono-Regular,monospace}
-pre{background:#f3f4f6;padding:1rem;border-radius:.6rem;overflow:auto;font-size:.85rem}
-.nota{background:#fff3cd;border:1px solid #ffecb5;padding:.75rem;border-radius:.6rem;margin:1rem 0}
-.ok{color:#0a7a1a;font-weight:bold}
-.warn{color:#9a5a00;font-weight:bold}
-.error{color:#b3261e;font-weight:bold}
-.paso{border:1px solid #e1e4e8;border-radius:.75rem;padding:1rem;margin:1rem 0;background:#fafbfc}
-.paso h3{margin-top:0;font-size:1.1rem;border-bottom:1px solid #e1e4e8;padding-bottom:.4rem}
-.paso .obj{font-weight:bold;color:#0b5ed7}
-.paso .cmd{color:#d63384}
-.paso .salida{color:#222;white-space:pre-wrap;font-size:.8rem}
-.paso .verif{color:#0a7a1a}
-.paso .error{color:#b3261e}
-.tiempo{font-size:.85rem;color:#666;margin-left:.5rem}
+:root{--tinta:#14213d;--mar:#0b7285;--mar-oscuro:#0b3d4d;--arena:#f4a261;
+--fondo:#fbfaf6;--panel:#fff;--linea:#e5e0d5;--ok:#1b7f4b;--no:#b42318;--gris:#6b7280}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+color:var(--tinta);background:var(--fondo);line-height:1.65}
+header.hero{padding:3.2rem 1.5rem 2.4rem;color:#fff;
+background:linear-gradient(135deg,#0b3d4d,var(--mar))}
+.wrap{max-width:64rem;margin:0 auto}
+.eyebrow{margin:0;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;
+color:#ffe8c2;font-weight:600}
+h1{margin:.35rem 0 .6rem;font-size:clamp(1.9rem,4.5vw,2.9rem);line-height:1.12}
+.sub{margin:0;max-width:46rem;color:#d7f0f4;font-size:1.06rem}
+.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.15rem}
+.meta span{font-size:.8rem;padding:.28rem .7rem;border:1px solid rgba(255,255,255,.35);
+border-radius:999px;background:rgba(255,255,255,.08)}
+.layout{display:grid;grid-template-columns:15rem minmax(0,1fr);gap:2.2rem;
+max-width:76rem;margin:0 auto;padding:2rem 1.5rem 5rem}
+nav.toc{position:sticky;top:1rem;align-self:start;font-size:.9rem;
+border-right:1px solid var(--linea);padding-right:1rem}
+nav.toc p{margin:.2rem 0 .6rem;font-weight:700;font-size:.78rem;
+letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+nav.toc a{display:block;padding:.18rem 0;color:var(--tinta);text-decoration:none}
+nav.toc a:hover{color:var(--mar);text-decoration:underline}
+main{min-width:0}section{margin:0 0 2.4rem}
+h2{font-size:1.35rem;margin:0 0 .7rem;padding-bottom:.35rem;
+border-bottom:2px solid var(--arena)}
+h3{font-size:1.05rem;margin:1.4rem 0 .4rem}
+p{margin:.55rem 0}a{color:var(--mar)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+font-size:.88em;background:#f0ece2;padding:.08rem .32rem;border-radius:.25rem}
+pre{margin:.7rem 0;padding:.9rem 1rem;overflow-x:auto;background:#10202a;color:#e8f1f2;
+border-radius:.45rem;font-size:.85rem;line-height:1.5}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+blockquote{margin:.8rem 0;padding:.85rem 1rem;background:#fff7ea;
+border-left:4px solid var(--arena);border-radius:.25rem;font-size:.94rem}
+blockquote p{margin:.2rem 0}
+table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.92rem}
+th,td{padding:.55rem .6rem;border:1px solid var(--linea);text-align:left;vertical-align:top}
+th{background:#f2efe6;font-size:.82rem;letter-spacing:.03em;text-transform:uppercase}
+tr:nth-child(even) td{background:#fcfbf7}
+ul,ol{margin:.5rem 0 .7rem;padding-left:1.5rem}li{margin:.18rem 0}
+hr{border:0;border-top:1px solid var(--linea);margin:1.6rem 0}
+footer{border-top:1px solid var(--linea);padding:1.4rem 1.5rem;text-align:center;
+font-size:.84rem;color:var(--gris)}
+@media(max-width:820px){.layout{grid-template-columns:1fr;padding-top:1.2rem}
+nav.toc{position:static;border-right:0;border-bottom:1px solid var(--linea);
+padding:0 0 .8rem}nav.toc a{display:inline-block;margin-right:.9rem}}
+@media print{header.hero{background:#0b3d4d!important;-webkit-print-color-adjust:exact}
+nav.toc{display:none}.layout{display:block;max-width:none;padding:1rem}
+pre{white-space:pre-wrap}}
 </style>
 </head>
 <body>
-<h1>Lab 2 — VLSM y direccionamiento</h1>
-<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Lab 2</strong> · <strong>Tiempo estimado:</strong> 75 min · <strong>Semana:</strong> S2</p>
-
-<h2>Objetivo</h2>
-<p>Planifica con VLSM la red <code>10.10.0.0/22</code> para tres LANs (60, 28 y 12 hosts) y el enlace WAN entre dos routers, aplica las direcciones en los routers y los hosts, instala las rutas estáticas y comprueba la conectividad extremo a extremo.</p>
-
-<div class="nota"><strong>Guía verificada:</strong> esta guía se ejecutó sobre una estación desechable (<code>oco-tmp-lab02-station</code>, imagen <code>labs/hep-redes-lab02:1.0.0</code>). Todas las salidas son reales de esa estación. Conectividad verificada: 0% de pérdida en todos los pings.</div>
-
-<h2>Plan VLSM de referencia (desde 10.10.0.0/22)</h2>
-<table>
-<tr><th>Segmento</th><th>Hosts necesarios</th><th>Máscara</th><th>Red</th><th>Rango usable</th><th>Broadcast</th><th>Puerta de enlace</th></tr>
-<tr><td>LAN A (pc1, 60 hosts)</td><td>60</td><td>/26</td><td>10.10.0.0/26</td><td>10.10.0.1 – 10.10.0.62</td><td>10.10.0.63</td><td>10.10.0.1</td></tr>
-<tr><td>LAN B (pc2, 28 hosts)</td><td>28</td><td>/27</td><td>10.10.0.64/27</td><td>10.10.0.65 – 10.10.0.94</td><td>10.10.0.95</td><td>10.10.0.65</td></tr>
-<tr><td>LAN C (srv1, 12 hosts)</td><td>12</td><td>/28</td><td>10.10.0.96/28</td><td>10.10.0.97 – 10.10.0.110</td><td>10.10.0.111</td><td>10.10.0.97</td></tr>
-<tr><td>WAN (r1-r2)</td><td>2</td><td>/30</td><td>10.10.0.100/30</td><td>10.10.0.101 – 10.10.0.102</td><td>10.10.0.103</td><td>r1: .101 · r2: .102</td></tr>
-</table>
-<p><em>El verificador acepta CUALQUIER plan VLSM válido; este es solo una demostración.</em></p>
-
-<h2>Topología de fábrica</h2>
-<pre>
-           (WAN /30)           (LAN A /26)       (LAN B /27)      (LAN C /28)
-         r1 eth0 ========= eth0 r2 eth1 ========= pc2   r2 eth2 ========= srv1
-           |                                   |
-         10.10.0.101                       10.10.0.65         10.10.0.97
-           |                                   |
-         eth1                              eth0
-         10.10.0.1                         pc2
-         |
-       pc1
-       10.10.0.10
-</pre>
-<p>Dispositivos: <code>r1</code>, <code>r2</code> (routers), <code>pc1</code>, <code>pc2</code>, <code>srv1</code> (hosts con servidor web en puerto 80).</p>
-
-<h2>CLI (netcli, estilo IOS)</h2>
-<p>Entra a un dispositivo con <code>netcli &lt;dispositivo&gt;</code>.</p>
-<table>
-<tr><th>Comando</th><th>Qué hace</th></tr>
-<tr><td><code>enable</code></td><td>modo privilegiado</td></tr>
-<tr><td><code>configure terminal</code></td><td>modo de configuración</td></tr>
-<tr><td><code>interface &lt;ifaz&gt;</code></td><td>configura una interfaz</td></tr>
-<tr><td><code>ip address &lt;IP&gt; &lt;máscara&gt;</code></td><td>asigna IP (routers/hosts)</td></tr>
-<tr><td><code>ip route &lt;red&gt; &lt;máscara&gt; &lt;siguiente_salto&gt;</code></td><td>ruta estática (routers)</td></tr>
-<tr><td><code>ip default-gateway &lt;IP&gt;</code></td><td>puerta de enlace (hosts)</td></tr>
-<tr><td><code>hostname &lt;nombre&gt;</code></td><td>renombra el dispositivo</td></tr>
-<tr><td><code>enable secret &lt;texto&gt;</code></td><td>contraseña de modo privilegiado (cifrada)</td></tr>
-<tr><td><code>service password-encryption</code></td><td>cifra contraseñas guardadas</td></tr>
-<tr><td><code>line vty 0 4</code> / <code>transport input ssh</code></td><td>solo SSH en VTY</td></tr>
-<tr><td><code>write memory</code></td><td>guarda la configuración</td></tr>
-<tr><td><code>show running-config</code> / <code>show ip interface brief</code> / <code>show ip route</code></td><td>verificación</td></tr>
-<tr><td><code>ping &lt;IP&gt;</code></td><td>prueba de conectividad</td></tr>
-</table>
-
-<h2>Guía paso a paso (10 pasos)</h2>
-
-<div class="paso">
-<h3>Paso 1 — Verificar estado inicial de fábrica <span class="tiempo">≈5 min</span></h3>
-<p class="obj">Objetivo: confirmar que los routers llegan sin configurar (sin IPs, sin rutas, sin secretos, Telnet habilitado).</p>
-<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
-<pre>
-enable
-show running-config
-show ip interface brief
-exit
-</pre>
-<p class="salida">Salida real (estación <code>oco-tmp-lab02-station</code>):</p>
-<pre>
-r1# ! configuración en vivo de r1 (netcli sobre kernel Linux)
-hostname r1
-line vty
- transport input all
-r1# Interface              IP-Address      OK? Method Status                Protocol
-eth0                   unassigned      YES manual up                     up
-eth1                   unassigned      YES manual up                     up
-</pre>
-<p class="verif">Verificación: <code>hostname r1</code>, <code>transport input all</code>, sin <code>enable secret</code>, sin IPs, sin rutas.</p>
-<p class="error">Error típico: no documentar el estado inicial. Corrección: siempre verificar el estado de fábrica antes de configurar.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad.</p>
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Universidad de la Costa · Buenas Prácticas de Redes HEP</p>
+    <h1>Lab 2 — VLSM y direccionamiento</h1>
+    <p class="sub">Tu estación tiene dos routers (r1, r2) unidos por un enlace WAN y tres</p>
+    <div class="meta">
+      <span>Laboratorio de la HEP</span><span>Nube simulada con floci</span>
+      <span>Sin cuenta de AWS</span><span>Sin Internet</span>
+    </div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="Contenido">
+    <p>Contenido</p>
+    <a href="#objetivo">Objetivo</a>
+<a href="#el-reto-vlsm">El reto VLSM</a>
+<a href="#routers-con-netcli">Routers con netcli</a>
+<a href="#hosts-consola-linux">Hosts (consola Linux)</a>
+<a href="#comprobacion-final">Comprobación final</a>
+<a href="#errores-tipicos-que-este-lab-detecta">Errores típicos que este lab detecta</a>
+  </nav>
+  <main>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Valor:</strong> 5,0 (5 criterios × 1,0) · <strong>Tiempo estimado:</strong> 75 minutos · <strong>Individual.</strong></p>
+<h2 id="objetivo">Objetivo</h2>
+<p>Tu estación tiene dos routers (<code>r1</code>, <code>r2</code>) unidos por un enlace WAN y tres LANs: A con <code>pc1</code>, B con <code>pc2</code> y C con el servidor <code>srv1</code>. <strong>Nada tiene direcciones.</strong> Vas a planificar el direccionamiento con <strong>VLSM</strong> a partir de <code>10.10.0.0/22</code>, aplicarlo en los routers con <code>netcli</code> y en los hosts con su consola Linux, instalar las rutas estáticas y demostrar conectividad extremo a extremo.</p>
+<h2 id="el-reto-vlsm">El reto VLSM</h2>
+<p>Reparte <code>10.10.0.0/22</code> sin desperdiciar (de mayor a menor):</p>
+<table><thead><tr><th>Segmento</th><th>Hosts necesarios</th><th>Prefijo que le corresponde</th></tr></thead><tbody><tr><td>LAN A (pc1, detrás de r1)</td><td>60</td><td><strong>/26</strong> → 10.10.0.0/26 (62 útiles)</td></tr><tr><td>LAN B (pc2, detrás de r2)</td><td>28</td><td><strong>/27</strong> → 10.10.0.64/27 (30 útiles)</td></tr><tr><td>LAN C (srv1, detrás de r2)</td><td>12</td><td><strong>/28</strong> → 10.10.0.96/28 (14 útiles)</td></tr><tr><td>WAN r1–r2</td><td>2</td><td><strong>/30</strong> → 10.10.0.124/30 (2 útiles)</td></tr></tbody></table>
+<blockquote><p>El verificador de la WAN acepta cualquier /30 <strong>válida y dentro del /22</strong> cuyos dos extremos compartan subred; el resto del plan es fijo para que todos comparen resultados.</p></blockquote>
+<p>Direcciones sugeridas (puedes usar otras dentro de cada subred):</p>
+<table><thead><tr><th>Dispositivo</th><th>Interfaz</th><th>IP</th><th>Puerta de enlace</th></tr></thead><tbody><tr><td>r1</td><td>eth0 (WAN)</td><td>10.10.0.125/30</td><td>—</td></tr><tr><td>r1</td><td>eth1 (LAN A)</td><td>10.10.0.1/26</td><td>—</td></tr><tr><td>r2</td><td>eth0 (WAN)</td><td>10.10.0.126/30</td><td>—</td></tr><tr><td>r2</td><td>eth1 (LAN B)</td><td>10.10.0.65/27</td><td>—</td></tr><tr><td>r2</td><td>eth2 (LAN C)</td><td>10.10.0.97/28</td><td>—</td></tr><tr><td>pc1</td><td>eth0</td><td>10.10.0.10/26</td><td>10.10.0.1</td></tr><tr><td>pc2</td><td>eth0</td><td>10.10.0.66/27</td><td>10.10.0.65</td></tr><tr><td>srv1</td><td>eth0</td><td>10.10.0.98/28</td><td>10.10.0.97</td></tr></tbody></table>
+<h2 id="routers-con-netcli">Routers con netcli</h2>
+<pre><code>netcli r1
+r1&gt; enable
+r1# configure terminal
+r1(config)# interface eth0
+r1(config-if)# ip address 10.10.0.125 255.255.255.252
+r1(config-if)# no shutdown
+r1(config-if)# exit
+r1(config)# interface eth1
+r1(config-if)# ip address 10.10.0.1 255.255.255.192
+r1(config-if)# no shutdown
+r1(config-if)# exit
+r1(config)# ip route 10.10.0.64 255.255.255.224 10.10.0.126
+r1(config)# ip route 10.10.0.96 255.255.255.240 10.10.0.126
+r1(config)# end
+r1# write memory</code></pre>
+<p>En <code>r2</code> lo análogo: <code>eth0</code> 10.10.0.126/30, <code>eth1</code> 10.10.0.65/27, <code>eth2</code> 10.10.0.97/28, y la ruta de vuelta:</p>
+<pre><code>r2(config)# ip route 10.10.0.0 255.255.255.192 10.10.0.125</code></pre>
+<p>Verifica con <code>show ip interface brief</code> y <code>show ip route</code> en ambos.</p>
+<h2 id="hosts-consola-linux">Hosts (consola Linux)</h2>
+<p>Los PCs no hablan IOS: entra a su consola y usa los comandos de Linux.</p>
+<pre><code>netcli pc1
+[pc1] $ ip addr add 10.10.0.10/26 dev eth0
+[pc1] $ ip route add default via 10.10.0.1
+[pc1] $ ping 10.10.0.1          # tu gateway
+[pc1] $ exit</code></pre>
+<p>Repite con <code>pc2</code> (10.10.0.66/27, gw 10.10.0.65) y <code>srv1</code> (10.10.0.98/28, gw 10.10.0.97).</p>
+<h2 id="comprobacion-final">Comprobación final</h2>
+<p>Desde <code>pc1</code>:</p>
+<pre><code>[pc1] $ ping 10.10.0.66      # LAN B, cruzando la WAN
+[pc1] $ ping 10.10.0.98      # LAN C
+[pc1] $ exit
+$ revisar</code></pre>
+<p>Los criterios se leen directo del <strong>kernel</strong> (direcciones, máscaras, rutas y pings reales): no cuentan los <code>show</code> que copies y peguen, sino la red funcionando.</p>
+<h2 id="errores-tipicos-que-este-lab-detecta">Errores típicos que este lab detecta</h2>
+<ul><li>Máscara puesta «al ojo» (un /24 en todas partes): sobra espacio y las LANs se solapan con la WAN.</li><li>Rutas hacia la subred equivocada o con el vecino mal puesto.</li><li>PC sin puerta de enlace: el ping al gateway funciona pero al resto no.</li></ul>
+  </main>
 </div>
-
-<div class="paso">
-<h3>Paso 2 — Verificar estado inicial de r2 <span class="tiempo">≈5 min</span></h3>
-<p class="obj">Objetivo: confirmar que r2 llega sin configurar (tres interfaces sin IP, sin rutas).</p>
-<p class="cmd">Comando exacto (en <code>netcli r2</code>):</p>
-<pre>
-enable
-show running-config
-show ip interface brief
-exit
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-r2# ! configuración en vivo de r2 (netcli sobre kernel Linux)
-hostname r2
-line vty
- transport input all
-r2# Interface              IP-Address      OK? Method Status                Protocol
-eth0                   unassigned      YES manual up                     up
-eth1                   unassigned      YES manual up                     up
-eth2                   unassigned      YES manual up                     up
-</pre>
-<p class="verif">Verificación: 3 interfaces sin IP, <code>transport input all</code>, sin rutas.</p>
-<p class="error">Error típico: asumir que r2 tiene alguna configuración previa. Corrección: verificar siempre.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 3 — Configurar r1: nombre, banner y seguridad <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: poner nombre de convención, banner restrictivo, enable secret cifrado, usuario admin, cifrado de contraseñas y solo SSH en VTY.</p>
-<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R1-HEP
-banner motd #Lab 02 - VLSM#
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R1-HEP# show running-config
-hostname R1-HEP
-banner motd ^Lab 02 - VLSM^
-enable secret 5 $6$XBON3CIEXprcLNLc$vuVk0hnNch5KAH8ozTmk7wAWSAREZNsLlGW9v4JA6XspnldsaWMEUuy2dCLMhZj0GC0UGG6odcRbAjJB.SU/R.   ! sha512, nunca en claro
-username admin secret 5 $6$uUUWyrhbzfKyCiGg$8S3eqj/MXXyPsiVLHSBFIPS6FgZL04JJBQ0qPdCVxrgvq0TI/fvZUBTZxNikyr1j8gCiE/o6PoALUvO81tzSq.   ! sha512
-service password-encryption
-line vty
- transport input ssh
-</pre>
-<p class="verif">Verificación: <code>enable secret 5 $6$...</code> (hash SHA-512), <code>service password-encryption</code>, <code>transport input ssh</code>.</p>
-<p class="error">Error típico: escribir <code>transport input all</code> o olvidar <code>service password-encryption</code>. Corrección: repetir <code>line vty</code> y <code>transport input ssh</code>.</p>
-<p><strong>Verificador:</strong> criterio de seguridad en dispositivos.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 4 — Configurar r1: interfaz WAN (eth0) y LAN A (eth1) <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: asignar IP a eth0 (enlace WAN hacia r2) y eth1 (LAN A hacia pc1).</p>
-<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
-<pre>
-interface eth0
-ip address 10.10.0.101 255.255.255.252
-exit
-interface eth1
-ip address 10.10.0.1 255.255.255.192
-exit
-end
-write memory
-show ip interface brief
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R1-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   10.10.0.101/30  YES manual up                     up
-eth1                   10.10.0.1/26    YES manual up                     up
-</pre>
-<p class="verif">Verificación: eth0 con 10.10.0.101/30 y eth1 con 10.10.0.1/26, ambas up/up.</p>
-<p class="error">Error típico: usar máscara incorrecta que solape con otra subred del plan VLSM. Corrección: verificar con <code>show ip interface brief</code>.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento VLSM sin solapamientos.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 5 — Configurar r1: rutas estáticas hacia LAN B y LAN C <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: agregar rutas estáticas en r1 hacia las redes de r2 (LAN B y LAN C) a través del enlace WAN.</p>
-<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
-<pre>
-ip route 10.10.0.64 255.255.255.224 10.10.0.102
-ip route 10.10.0.96 255.255.255.240 10.10.0.102
-end
-write memory
-show ip route
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R1-HEP# show ip route
-C  10.10.0.0/26 directamente conectada, eth1 (conectada, 10.10.0.1)
-O  10.10.0.64/27 via 10.10.0.102, eth0
-O  10.10.0.96/28 via 10.10.0.102, eth0
-C  10.10.0.100/30 directamente conectada, eth0 (conectada, 10.10.0.101)
-</pre>
-<p class="verif">Verificación: <code>show ip route</code> muestra rutas estáticas hacia 10.10.0.64/27 y 10.10.0.96/28 via 10.10.0.102.</p>
-<p class="error">Error típico: siguiente salto incorrecto (debe ser 10.10.0.102, la IP de r2 en el enlace WAN). Corrección: verificar con <code>show ip route</code>.</p>
-<p><strong>Verificador:</strong> criterio de conectividad extremo a extremo.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 6 — Configurar r2: nombre, banner y seguridad <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: endurecer r2 con nombre, banner, enable secret, usuario admin, cifrado y solo SSH en VTY.</p>
-<p class="cmd">Comando exacto (en <code>netcli r2</code>):</p>
-<pre>
-enable
-configure terminal
-hostname R2-HEP
-banner motd #Lab 02 - VLSM#
-enable secret ClaveSegura123
-username admin secret AdminSegura123
-service password-encryption
-line vty
-transport input ssh
-end
-write memory
-show running-config
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R2-HEP# show running-config
-hostname R2-HEP
-banner motd ^Lab 02 - VLSM^
-enable secret 5 $6$WDwXTgq26i4DOzj8$33so/pwQnplf6kh5auHXgG/G4YcIxcf2VcgkUu1yR21LzSCLGGJsa.Zlv5YE9Ny8TeE7GuzNr48PGXs5LgB7E/   ! sha512
-username admin secret 5 $6$T9vVDbN42Mv0z9Hd$iW9ItRFAth0TMh627F9Abmk90.47vbd2wlUBiJpor9gV2j9GkETs5dPGhv5ykco7iwaixFNTABX0ACRBwTSAh.   ! sha512
-service password-encryption
-line vty
- transport input ssh
-</pre>
-<p class="verif">Verificación: <code>show running-config</code> muestra hardening completo en r2.</p>
-<p class="error">Error típico: olvidar endurecer r2. Corrección: aplicar los mismos comandos de seguridad que en r1.</p>
-<p><strong>Verificador:</strong> criterio de seguridad en todos los dispositivos.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 7 — Configurar r2: tres interfaces y ruta hacia LAN A <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: direccionar eth0 (WAN hacia r1), eth1 (LAN B hacia pc2) y eth2 (LAN C hacia srv1), y agregar ruta estática hacia LAN A.</p>
-<p class="cmd">Comando exacto (en <code>netcli r2</code>):</p>
-<pre>
-interface eth0
-ip address 10.10.0.102 255.255.255.252
-exit
-interface eth1
-ip address 10.10.0.65 255.255.255.224
-exit
-interface eth2
-ip address 10.10.0.97 255.255.255.240
-exit
-ip route 10.10.0.0 255.255.255.192 10.10.0.101
-end
-write memory
-show running-config
-show ip interface brief
-show ip route
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-R2-HEP# show ip interface brief
-Interface              IP-Address      OK? Method Status                Protocol
-eth0                   10.10.0.102/30  YES manual up                     up
-eth1                   10.10.0.65/27   YES manual up                     up
-eth2                   10.10.0.97/28   YES manual up                     up
-R2-HEP# show ip route
-O  10.10.0.0/26 via 10.10.0.101, eth0
-C  10.10.0.64/27 directamente conectada, eth1 (conectada, 10.10.0.65)
-C  10.10.0.96/28 directamente conectada, eth2 (conectada, 10.10.0.97)
-C  10.10.0.100/30 directamente conectada, eth0 (conectada, 10.10.0.102)
-</pre>
-<p class="verif">Verificación: las 3 interfaces con IP correcta, rutas conectadas para las LANs propias, ruta estática hacia 10.10.0.0/26 via 10.10.0.101.</p>
-<p class="error">Error típico: IP incorrecta en alguna interfaz o falta la ruta hacia LAN A. Corrección: verificar con <code>show ip interface brief</code> y <code>show ip route</code>.</p>
-<p><strong>Verificador:</strong> criterios de direccionamiento y conectividad.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 8 — Configurar PCs y servidor: IP y puerta de enlace <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: asignar IP y puerta de enlace a pc1, pc2 y srv1.</p>
-<p class="cmd">Comando exacto (desde el host de la estación):</p>
-<pre>
-# PC1 (LAN A: 10.10.0.0/26, gw 10.10.0.1)
-ip netns exec lab-pc1 ip addr add 10.10.0.10/26 dev eth0
-ip netns exec lab-pc1 ip link set eth0 up
-ip netns exec lab-pc1 ip route add default via 10.10.0.1
-
-# PC2 (LAN B: 10.10.0.64/27, gw 10.10.0.65)
-ip netns exec lab-pc2 ip addr add 10.10.0.66/27 dev eth0
-ip netns exec lab-pc2 ip link set eth0 up
-ip netns exec lab-pc2 ip route add default via 10.10.0.65
-
-# SRV1 (LAN C: 10.10.0.96/28, gw 10.10.0.97)
-ip netns exec lab-srv1 ip addr add 10.10.0.98/28 dev eth0
-ip netns exec lab-srv1 ip link set eth0 up
-ip netns exec lab-srv1 ip route add default via 10.10.0.97
-</pre>
-<p class="salida">Salida real: comandos sin errores; todos los hosts quedan con IP y ruta por defecto configuradas.</p>
-<p class="verif">Verificación: <code>ip netns exec lab-pc1 ip addr show eth0</code> muestra <code>inet 10.10.0.10/26</code>.</p>
-<p class="error">Error típico: puerta de enlace incorrecta o interfaz no levantada. Corrección: verificar con <code>ip addr show</code> y <code>ip route</code>.</p>
-<p><strong>Verificador:</strong> criterio de direccionamiento de hosts.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 9 — Verificar conectividad extremo a extremo <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: confirmar que todos los hosts se alcanzan entre sí.</p>
-<p class="cmd">Comando exacto:</p>
-<pre>
-ip netns exec lab-pc1 ping -c 1 10.10.0.66
-ip netns exec lab-pc1 ping -c 1 10.10.0.98
-ip netns exec lab-pc2 ping -c 1 10.10.0.98
-</pre>
-<p class="salida">Salida real:</p>
-<pre>
-PING 10.10.0.66 (10.10.0.66) 56(84) bytes of data.
-64 bytes from 10.10.0.66: icmp_seq=1 ttl=62 time=0.838 ms
---- 10.10.0.66 ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time 0ms
-
-PING 10.10.0.98 (10.10.0.98) 56(84) bytes of data.
-64 bytes from 10.10.0.98: icmp_seq=1 ttl=62 time=0.719 ms
---- 10.10.0.98 ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time 0ms
-
-PING 10.10.0.98 (10.10.0.98) 56(84) bytes of data.
-64 bytes from 10.10.0.98: icmp_seq=1 ttl=63 time=0.057 ms
---- 10.10.0.98 ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time 0ms
-</pre>
-<p class="verif">Verificación: todos los pings con 0% de pérdida entre cualquier par de hosts.</p>
-<p class="error">Error típico: ping falla por falta de rutas o IP incorrecta. Corrección: revisar rutas en r1 y r2, y IPs en los hosts.</p>
-<p><strong>Verificador:</strong> criterio de conectividad extremo a extremo.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 10 — Ejecutar el verificador automático <span class="tiempo">≈10 min</span></h3>
-<p class="obj">Objetivo: ejecutar <code>revisar</code> para que el servidor evalúe la estación.</p>
-<p class="cmd">Comando exacto (en la estación):</p>
-<pre>
-revisar
-</pre>
-<p class="salida">Salida esperada: el servidor evalúa los criterios automáticos (direccionamiento VLSM, rutas, conectividad, seguridad) y reporta el veredicto.</p>
-<p class="verif">Verificación: todos los criterios muestran [OK]. Resultado: X de Y criterios en verde.</p>
-<p class="error">Error típico: algún criterio en rojo. Corrección: revisar el detalle y aplicar el paso correspondiente.</p>
-<p><strong>Verificador:</strong> criterios automáticos del lab (100 pts).</p>
-</div>
-
-<h2>Si algo falla</h2>
-<table>
-<tr><th>Síntoma</th><th>Causa probable</th><th>Corrección</th></tr>
-<tr><td>IP solapada entre subredes</td><td>Plan VLSM incorrecto (subredes se cruzan)</td><td>Rediseñar el plan VLSM desde 10.10.0.0/22 respetando los tamaños requeridos</td></tr>
-<tr><td>Falta ruta estática en r1 o r2</td><td>Ruta no configurada o siguiente salto incorrecto</td><td>Agregar <code>ip route</code> con el siguiente salto correcto (IP del otro router en el WAN)</td></tr>
-<tr><td>Host sin conectividad</td><td>IP incorrecta, puerta de enlace wrong, o interfaz no levantada</td><td>Verificar con <code>ip addr show</code> y <code>ip route</code> en el host</td></tr>
-<tr><td>Ruta no aparece en show ip route</td><td>Ruta no configurada o comando no guardado</td><td>Ejecutar <code>ip route</code> y <code>write memory</code></td></tr>
-</table>
-
-<h2>Entregable y nota</h2>
-<p>Cuando hayas terminado, ejecuta <code>revisar</code> en tu estación. El servidor evaluará el estado real y te dará el veredicto. Entrega el plan VLSM, capturas de la estación y evidencias de conectividad por Canvas según la tarea correspondiente.</p>
-
-<div class="nota"><strong>Evidencia de pruebas:</strong> estación <code>oco-tmp-lab02-station</code> (imagen <code>labs/hep-redes-lab02:1.0.0</code>) configurada con conectividad verificada (0% pérdida en pc1→pc2, pc1→srv1, pc2→srv1). Estación destruida sin residuos tras la captura de salidas.</div>
+<footer>
+  Buenas Prácticas de Redes HEP · Universidad de la Costa ·
+  nube simulada con <code>floci</code>, sin Internet
+</footer>
 </body>
 </html>
