@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>PA2 — Auditoría de red, remediación y estándares — Guía del Proyecto de Aula</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--cuc-azul:#003366;--cuc-azul-claro:#0056a0;--cuc-amarillo:#ffcc00;--bg:#f5f5f5;--card:#fff;--txt:#222;--muted:#666;--border:#ddd}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;background:var(--bg);color:var(--txt);margin:0;padding:2rem}
+header{background:var(--cuc-azul);color:#fff;padding:2rem;border-radius:8px;margin-bottom:2rem;text-align:center}
+header h1{margin:0;font-size:1.8rem}
+header p{margin:.5rem 0 0;opacity:.9}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 2px 4px rgba(0,0,0,.05)}
+.card h2{margin-top:0;color:var(--cuc-azul);font-size:1.3rem;border-bottom:2px solid var(--cuc-amarillo);padding-bottom:.5rem}
+.card h3{color:var(--cuc-azul-claro);font-size:1.1rem}
+.paso{border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin:1.5rem 0;background:#fafafa}
+.paso h3{margin-top:0;font-size:1.1rem;color:var(--cuc-azul);border-bottom:1px solid var(--border);padding-bottom:.5rem}
+.paso .obj{font-weight:bold;color:var(--cuc-azul);display:block;margin-bottom:.5rem}
+.paso pre{background:#1e1e1e;color:#d4d4d4;padding:.8rem 1rem;border-radius:4px;font-family:monospace;font-size:.85rem;overflow-x:auto;margin:.5rem 0;white-space:pre-wrap}
+.paso .verif{color:#28a745;font-weight:bold}
+.paso .error{color:#dc3545;font-weight:bold}
+.paso .tiempo{font-size:.9rem;color:var(--muted);float:right}
+.paso .nota{background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:.8rem;margin:1rem 0;color:#856404;font-size:.9rem}
+.paso .tip{background:#d4edda;border:1px solid #28a745;border-radius:4px;padding:.8rem;margin:1rem 0;color:#155724;font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin:1rem 0}
+th,td{border:1px solid var(--border);padding:.6rem;text-align:left}
+th{background:var(--cuc-azul);color:#fff}
+tr:nth-child(even){background:#fafafa}
+footer{text-align:center;color:var(--muted);font-size:.9rem;padding:2rem;border-top:1px solid var(--border);margin-top:2rem}
+</style>
+</head>
+<body>
+<header>
+<h1>Proyecto de Aula 2 — Auditoría de red, remediación y estándares</h1>
+<p>Guía de Orientación Metodológica y Proceso de Auditoría · Buenas Prácticas de Redes HEP</p>
+</header>
+
+<div class="card">
+<h2>Escenario y Alcance</h2>
+<p><strong>Organización:</strong> CaribeTrans — Red WAN empresarial de transporte logístico (r1 Central Barranquilla, r2 Nodo Intermedio, r3 Nodo Cartagena, swA Sede Operativa).</p>
+<p>La estación llega con una infraestructura en operación que contiene 6 hallazgos de incumplimiento normativo y una debilidad en el mecanismo de conmutación por fallo (failover con ruta flotante). El estudiante debe actuar como auditor de red: ejecutar el levantamiento de inventario y diagnóstico, remediar técnicamente cada hallazgo contra los estándares correspondientes (ISO 27001, TIA-942, IEEE 802.1Q, IEEE 802.1X, RFC 1918), validar la resiliencia del enlace redundante documentando el trade-off técnico (IP SLA vs AD-only), y dejar las evidencias e informe en <code>/workspace</code>.</p>
+<div class="nota"><strong>Importante:</strong> Esta guía describe el proceso de auditoría, las herramientas de diagnóstico, los estándares a evaluar y las pautas de remediación sin exponer las soluciones directas a los hallazgos ni los scripts de remediación automática.</div>
+</div>
+
+<div class="card">
+<h2>Metodología de Auditoría y Remediación Paso a Paso (10 Pasos)</h2>
+
+<div class="paso">
+<h3>Paso 1 — Levantamiento de Inventario y Diagnóstico Inicial <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Reconocer los dispositivos activos, estado de interfaces y topología de red.</span>
+<p>Inspeccione el estado de los enlaces y namespaces de la red:</p>
+<pre>
+ip netns list
+cat /opt/lab/topologia.json | grep -E "dispositivos|interfaces"
+</pre>
+<p class="verif">Verificación: Documente el estado operativo de cada interfaz y detecte si existen enlaces caídos.</p>
+<p class="error">Error típico: Iniciar modificaciones sin registrar el estado original para el informe de auditoría.</p>
+<p><strong>Criterio evaluado:</strong> Diagnóstico e inventario de infraestructura.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 2 — Auditoría de Disponibilidad Física y Enlaces WAN (H1) <span class="tiempo">≈10 min</span></h3>
+<span class="obj">Objetivo: Identificar enlaces en estado administrativo Down e implementar remediación bajo estándar TIA-942.</span>
+<p>Verifique el estado del enlace entre r1 y r2:</p>
+<pre>
+ip netns exec lab-r1 ip link show
+ip netns exec lab-r2 ip link show
+</pre>
+<p class="verif">Verificación: Si un enlace se encuentra en DOWN o administratively down, proceda a su activación y verifique conectividad de capa 2/3.</p>
+<p class="error">Error típico: Habilitar un extremo del enlace pero olvidar el extremo remoto.</p>
+<p><strong>Criterio evaluado:</strong> Remediación H1 (Disponibilidad TIA-942).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 3 — Auditoría de Enrutamiento y Conectividad Bidireccional (H2, H3) <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Evaluar las tablas de enrutamiento de los nodos r1 y r3 conforme a RFC 1918.</span>
+<p>Consulte las tablas de rutas en los enrutadores extremos:</p>
+<pre>
+ip netns exec lab-r1 ip route
+ip netns exec lab-r3 ip route
+</pre>
+<p class="verif">Verificación: Identifique subredes inalcanzables. Remediación: configure las rutas estáticas requeridas para asegurar alcance mutuo bidireccional.</p>
+<p class="error">Error típico: Configurar la ruta de ida (r1->r3) pero olvidar la ruta de retorno (r3->r1).</p>
+<p><strong>Criterio evaluado:</strong> Remediación H2 y H3 (Enrutamiento y conectividad bidireccional).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 4 — Auditoría de Hardening y Seguridad en Equipos de Red (H4, H6) <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Evaluar el cumplimiento de ISO 27001 (A.9 y A.13) en r2 y r3.</span>
+<p>Examine la configuración de seguridad en <code>netcli r2</code> y <code>netcli r3</code>:</p>
+<pre>
+# En netcli:
+show running-config
+# Verificar si enable secret está configurado, si passwords están cifradas y qué transportes acepta VTY
+</pre>
+<p class="verif">Verificación: Elimine servicios inseguros (Telnet) forzando únicamente SSH, asigne enable secret y cifre las contraseñas de servicio.</p>
+<p class="error">Error típico: Mantener <code>transport input all</code> o <code>telnet</code> en las líneas VTY.</p>
+<p><strong>Criterio evaluado:</strong> Remediación H4 y H6 (Control de acceso y confidencialidad ISO 27001).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 5 — Auditoría de Segmentación y Seguridad en Capa de Conmutación (H5) <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Evaluar swA contra los estándares IEEE 802.1Q (VLANs) e IEEE 802.1X / Port Security.</span>
+<p>Compruebe el aislamiento en swA:</p>
+<pre>
+netcli swA
+show vlan brief
+show interfaces trunk
+</pre>
+<p class="verif">Verificación: Configure al menos dos VLANs nombradas para separar dominios y asegure el enlace troncal hacia el gateway.</p>
+<p class="error">Error típico: Dejar todos los puertos en la VLAN 1 predeterminada sin segmentación.</p>
+<p><strong>Criterio evaluado:</strong> Remediación H5 (Aislamiento IEEE 802.1Q).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 6 — Validación y Prueba de Failover en Enlace Redundante <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Probar la conmutación automática de tráfico entre el enlace primario y la ruta flotante.</span>
+<p>Verifique la existencia de una ruta flotante con distancia administrativa superior (p. ej. AD=10) hacia la sede destino vía r2:</p>
+<pre>
+# Simulación de falla en enlace principal (apagar interfaz primaria en r1):
+ip netns exec lab-r1 ip link set dev eth1 down
+# Probar que el tráfico continúe fluyendo por la ruta secundaria:
+ip netns exec lab-pc1 ping -c 2 <IP_DESTINO_R3>
+# Restaurar enlace principal:
+ip netns exec lab-r1 ip link set dev eth1 up
+</pre>
+<p class="verif">Verificación: El tráfico se conmuta sin pérdida permanente y regresa a la ruta principal al restaurarse el enlace.</p>
+<p class="error">Error típico: Ruta secundaria con la misma distancia administrativa que la primaria causando comportamiento errático.</p>
+<p><strong>Criterio evaluado:</strong> Remediación verificada con failover.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 7 — Análisis del Problema Inyectado y Trade-off IP SLA <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Diagnosticar la limitación de la ruta flotante simple frente a caídas de enlace indirectas y sustentar la decisión técnica.</span>
+<p>Analice el trade-off técnico entre una ruta flotante puramente estática (AD-only) y una con monitorización activa (IP SLA + track):</p>
+<pre>
+# Documente en /workspace/tradeoff_ip_sla.txt:
+# - Ventajas y riesgos de la solución AD-only vs IP SLA
+# - Consideraciones de coste, consumo de CPU y complejidad operativa
+# - Decisión técnica justificada según el escenario de CaribeTrans
+</pre>
+<p class="verif">Verificación: Archivo <code>/workspace/tradeoff_ip_sla.txt</code> creado con más de 100 caracteres sustentando el análisis.</p>
+<p class="error">Error típico: Omitir la sustentación técnica o dejar el archivo en blanco.</p>
+<p><strong>Criterio evaluado:</strong> Detección y corrección del problema inyectado (Criterio auto 3).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 8 — Generación del Checklist Contra Estándares <span class="tiempo">≈10 min</span></h3>
+<span class="obj">Objetivo: Elaborar el checklist formal de remediación asociando cada hallazgo a su estándar técnico.</span>
+<p>Documente en <code>/workspace/checklist_remediacion.txt</code> la matriz de hallazgos (H1 a H6):</p>
+<ul>
+<li>H1: Enlace r1-r2 operativo — Estándar TIA-942.</li>
+<li>H2: Ruta r1 hacia Sede Cartagena — Estándar RFC 1918.</li>
+<li>H3: Ruta r3 hacia Sede Barranquilla — Estándar RFC 1918.</li>
+<li>H4: Hardening en r2 (secret, cifrado, ssh) — Estándar ISO 27001.</li>
+<li>H5: Segmentación y VLANs en swA — Estándar IEEE 802.1Q.</li>
+<li>H6: Línea VTY segura en r3 (SSH only) — Estándar ISO 27001.</li>
+</ul>
+<p class="verif">Verificación: Los 6 hallazgos deben estar remediados en la estación y debidamente mapeados.</p>
+<p><strong>Criterio evaluado:</strong> Checklist contra estándares (Criterio auto 1).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 9 — Control con el Verificador Automático <span class="tiempo">≈10 min</span></h3>
+<span class="obj">Objetivo: Validar los 3 criterios automáticos antes de cerrar la entrega.</span>
+<p>Ejecute la herramienta de autocontrol:</p>
+<pre>
+revisar
+</pre>
+<p class="verif">Verificación: Verifique que Checklist, Remediación Verificada y Trade-off figuren en verde (60 pts).</p>
+<p class="error">Error típico: Dejar algún hallazgo pendiente de remediación en la configuración en vivo.</p>
+<p><strong>Criterio evaluado:</strong> 60 % de la calificación.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 10 — Consolidación del Informe Final de Auditoría <span class="tiempo">≈15 min</span></h3>
+<span class="obj">Objetivo: Preparar los documentos formales de entrega en /workspace.</span>
+<p>Asegure la presencia de los entregables para la rúbrica manual (40 %):</p>
+<ul>
+<li><code>/workspace/inventario_diagnostico.txt</code>: Inventario de equipos, interfaces y diagnóstico inicial con evidencias show/ping.</li>
+<li><code>/workspace/informe_final.pdf</code>: Informe ejecutivo de auditoría con matriz de remediación, conclusiones, análisis de impacto y lecciones aprendidas.</li>
+</ul>
+<pre>
+ls -la /workspace/inventario_diagnostico.txt /workspace/informe_final.pdf
+revisar
+</pre>
+<p class="verif">Verificación: <code>revisar</code> confirma 5 de 5 criterios en verde (100 pts).</p>
+<p><strong>Criterio evaluado:</strong> Documentación y entrega formal de auditoría (40 % manual).</p>
+</div>
+
+</div>
+
+<div class="card">
+<h2>Si algo falla — Diagnóstico Rápido</h2>
+<table>
+<tr><th>Problema</th><th>Posible Causa</th><th>Solución</th></tr>
+<tr><td>Checklist incompleto</td><td>Uno de los 6 hallazgos no está remediado en la estación</td><td>Revise el log de <code>revisar</code> e identifique el hallazgo en rojo para aplicar la remediación correspondiente.</td></tr>
+<tr><td>Falla de rutas bidireccionales</td><td>Falta ruta en r1 o r3</td><td>Verifique las tablas con <code>ip route</code> en ambos namespaces y agregue la ruta estática faltante.</td></tr>
+<tr><td>Trade-off en rojo</td><td>Archivo de justificación ausente o muy breve</td><td>Cree <code>/workspace/tradeoff_ip_sla.txt</code> detallando la justificación de la decisión técnica.</td></tr>
+<tr><td>Entregables manuales ausentes</td><td>Ruta o nombre incorrecto de los archivos</td><td>Verifique nombres exactos: <code>inventario_diagnostico.txt</code> e <code>informe_final.pdf</code>.</td></tr>
+</table>
+</div>
+
+<footer>
+<p>Buenas Prácticas de Redes de Telecomunicaciones · Campus Virtual CUC · 2026-2</p>
+</footer>
+</body>
+</html>
