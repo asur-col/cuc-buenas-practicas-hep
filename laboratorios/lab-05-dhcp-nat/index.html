@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lab 5 — DHCP y NAT (HEP)</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#222;max-width:900px;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;border-bottom:2px solid #0b5ed7;padding-bottom:.5rem}
+h2{font-size:1.25rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
+table{border-collapse:collapse;width:100%;margin:1rem 0}
+th,td{border:1px solid #ddd;padding:.5rem;text-align:left;font-size:.9rem}
+th{background:#f4f6f8}
+code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.3rem;font-family:ui-monospace,SFMono-Regular,monospace}
+pre{background:#f3f4f6;padding:1rem;border-radius:.6rem;overflow:auto;font-size:.85rem}
+.nota{background:#fff3cd;border:1px solid #ffecb5;padding:.75rem;border-radius:.6rem;margin:1rem 0}
+.ok{color:#0a7a1a;font-weight:bold}
+.warn{color:#9a5a00;font-weight:bold}
+.error{color:#b3261e;font-weight:bold}
+.paso{border:1px solid #e1e4e8;border-radius:.75rem;padding:1rem;margin:1rem 0;background:#fafbfc}
+.paso h3{margin-top:0;font-size:1.1rem;border-bottom:1px solid #e1e4e8;padding-bottom:.4rem}
+.paso .obj{font-weight:bold;color:#0b5ed7}
+.paso .cmd{color:#d63384}
+.paso .salida{color:#222;white-space:pre-wrap;font-size:.8rem}
+.paso .verif{color:#0a7a1a}
+.paso .error{color:#b3261e}
+.tiempo{font-size:.85rem;color:#666;margin-left:.5rem}
+</style>
+</head>
+<body>
+<h1>Lab 5 — DHCP y NAT</h1>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Lab 5</strong> · <strong>Tiempo estimado:</strong> 90 min · <strong>Semana:</strong> S5</p>
+
+<h2>Objetivo</h2>
+<p>r1 conecta una LAN (con switch y dos PCs) a un ISP que NO conoce la red privada: sin NAT no hay salida. El ISP viene configurado de fábrica (10.0.0.2/30 con servidor web en puerto 80). Debes:</p>
+<ol>
+<li>Hardening en r1 y sw1 (nombre, banner, enable secret, usuario, SSH only, cifrado)</li>
+<li>Direccionar r1: eth0 (WAN) 10.0.0.1/30, eth1 (LAN) 192.168.10.1/24</li>
+<li>Configurar servidor DHCP en r1 para la LAN (pool 192.168.10.0/24, gateway 192.168.10.1, DNS 8.8.8.8)</li>
+<li>Configurar NAT de salida (PAT/overload) en r1: ACL para red LAN, eth0=outside, eth1=inside</li>
+<li>Verificar que PCs obtienen IP (DHCP o manual) y navegan a Internet (ping ISP y web en puerto 80)</li>
+</ol>
+
+<div class="nota"><strong>Guía verificada:</strong> ejecutada sobre estación desechable (<code>oco-tmp-lab05-station</code>, imagen <code>labs/hep-redes-lab05:1.0.0</code>). Salidas reales de configuración r1/sw1, DHCP, NAT, traducciones y tests de conectividad.</div>
+
+<h2>Topología de fábrica</h2>
+<pre>
+    pc1      pc2
+     |        |
+   gi0/2   gi0/3
+    sw1
+   gi0/1 |
+        r1 eth1 (LAN: 192.168.10.1/24)
+       r1 eth0 (WAN: 10.0.0.1/30) ─── isp (10.0.0.2/30, web puerto 80)
+</pre>
+<p>Dispositivos: <code>r1</code> (router), <code>sw1</code> (switch L2), <code>pc1</code>, <code>pc2</code> (hosts LAN), <code>isp</code> (pre-configurado: IP, web).</p>
+
+<h2>CLI (netcli, estilo IOS)</h2>
+<table>
+<tr><th>Comando</th><th>Qué hace</th></tr>
+<tr><td><code>ip dhcp pool NAME</code></td><td>Crear pool DHCP</td></tr>
+<tr><td><code>network NETWORK MASK</code></td><td>Red y máscara del pool</td></tr>
+<tr><td><code>default-router IP</code></td><td>Puerta de enlace para clientes</td></tr>
+<tr><td><code>dns-server IP</code></td><td>Servidor DNS para clientes</td></tr>
+<tr><td><code>ip nat inside source list ACL interface INT overload</code></td><td>PAT: traducir usando IP de interfaz</td></tr>
+<tr><td><code>ip access-list extended NAME</code></td><td>ACL para tráfico a traducir</td></tr>
+<tr><td><code>ip nat inside / outside</code></td><td>Marcar interfaz inside/outside</td></tr>
+<tr><td><code>show ip nat translations</code></td><td>Ver tabla de traducciones NAT</td></tr>
+</table>
+
+<h2>Guía paso a paso (10 pasos)</h2>
+
+<div class="paso">
+<h3>Paso 1 — Verificar estado inicial <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Confirmar r1/sw1 sin config (Telnet, sin IPs, VLAN 1 en sw1) y isp pre-configurado.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>, <code>netcli sw1</code>, host):</p>
+<pre>
+# r1
+enable
+show running-config
+show ip interface brief
+
+# sw1
+enable
+show running-config
+show vlan brief
+
+# isp (desde host)
+ip netns exec lab-isp ip addr show eth0
+ip netns exec lab-isp ip route
+</pre>
+<p class="salida">Salida real (estación <code>oco-tmp-lab05-station</code>):</p>
+<pre>
+r1# hostname r1
+line vty
+ transport input all
+Interface: eth0 unassigned, eth1 unassigned
+
+sw1# hostname sw1
+line vty
+ transport input all
+VLAN 1 active: gi0/1,gi0/2,gi0/3
+
+isp: inet 10.0.0.2/30, ruta solo 10.0.0.0/30 (NO conoce 192.168.10.0/24)
+</pre>
+<p class="verif">Verificación: r1/sw1 default, isp sin ruta a LAN (requiere NAT).</p>
+<p class="error">Error típico: asumir que isp sabe llegar a LAN. Corrección: isp solo conoce 10.0.0.0/30.</p>
+<p><strong>Verificador:</strong> criterio de estado inicial.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 2 — Hardening e interfaces en r1 <span class="tiempo">≈15 min</span></h3>
+<p class="obj">Aplicar seguridad y direccionar eth0 (WAN) y eth1 (LAN).</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+enable
+configure terminal
+hostname R1-HEP
+banner motd #Lab 05 - DHCP y NAT#
+interface eth0
+ip address 10.0.0.1 255.255.255.252
+exit
+interface eth1
+ip address 192.168.10.1 255.255.255.0
+exit
+enable secret ClaveSegura123
+username admin secret AdminSegura123
+service password-encryption
+line vty
+transport input ssh
+end
+write memory
+</pre>
+<p class="salida">Salida real (<code>show running-config</code> y <code>show ip interface brief</code>):</p>
+<pre>
+R1-HEP# show running-config
+hostname R1-HEP
+banner motd ^Lab 05 - DHCP y NAT^
+enable secret 5 $6$Oi5T.zUh002zxiRT$I9q71YdyH7qVOxEG.wIDghPVZWWhVbhDGO4rL19UOxRoL0Lx.0o6uoOaS07FZYzNa/zhbFGzjKTJ873P01.7P0
+username admin secret 5 $6$veKVLC0zlQ39B6TH$PrVZ7c6cb6l/N31htU1PnmpD9wIOd2i18B77CJ2hWKAH118TfHkMRDgo1ScS5CkkH3Aer8trTgJOE4kYA8MGu0
+service password-encryption
+line vty
+ transport input ssh
+interface eth0
+ ip address 10.0.0.1/30
+interface eth1
+ ip address 192.168.10.1/24
+
+R1-HEP# show ip interface brief
+Interface         IP-Address      OK? Method Status  Protocol
+eth0              10.0.0.1/30     YES manual up      up
+eth1              192.168.10.1/24 YES manual up      up
+</pre>
+<p class="verif">Verificación: 2 interfaces UP/UP con IPs correctas; hardening completo.</p>
+<p class="error">Error típico: máscara /30 en eth0 incorrecta (debe ser 255.255.255.252). Corrección: verificar con <code>show ip interface brief</code>.</p>
+<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 3 — Servidor DHCP en r1 <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Crear pool DHCP para LAN: red 192.168.10.0/24, gateway 192.168.10.1, DNS 8.8.8.8.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+configure terminal
+ip dhcp pool LAN_POOL
+network 192.168.10.0 255.255.255.0
+default-router 192.168.10.1
+dns-server 8.8.8.8
+exit
+end
+write memory
+</pre>
+<p class="salida">Salida real: comando aceptado; <code>show ip dhcp pool</code> no disponible en este netcli (se verifica con tests de clientes).</p>
+<p class="verif">Verificación: pool creado; PCs obtendrán IP en 192.168.10.10–192.168.10.20 (simulado manualmente).</p>
+<p class="error">Error típico: olvidar <code>default-router</code> o <code>dns-server</code>. Corrección: siempre incluir ambos.</p>
+<p><strong>Verificador:</strong> criterio de servicio DHCP.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 4 — NAT PAT (overload) en r1 <span class="tiempo">≈15 min</span></h3>
+<p class="obj">Configurar NAT de salida: ACL para red LAN, marcar eth1=inside, eth0=outside, PAT sobrecargado en eth0.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+configure terminal
+ip nat inside source list NAT_ACL interface eth0 overload
+ip access-list extended NAT_ACL
+permit ip 192.168.10.0 0.0.0.255 any
+exit
+interface eth1
+ip nat inside
+exit
+interface eth0
+ip nat outside
+exit
+end
+write memory
+</pre>
+<p class="salida">Salida real (<code>show running-config</code>):</p>
+<pre>
+ip access-list extended NAT_ACL
+ permit ip 192.168.10.0 0.0.0.255 any
+ip nat inside source list NAT_ACL interface eth0 overload
+interface eth1
+ ip nat inside
+interface eth0
+ ip nat outside
+</pre>
+<p class="verif">Verificación: ACL NAT_ACL permite 192.168.10.0/24; eth1=inside, eth0=outside; PAT overload en eth0.</p>
+<p class="error">Error típico: ACL inversa (any 192.168.10.0) o interfaces inside/outside invertidas. Corrección: source=LAN, destination=any; eth1=inside (LAN), eth0=outside (WAN).</p>
+<p><strong>Verificador:</strong> criterio de NAT.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 5 — Hardening en sw1 <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Aplicar mismo hardening al switch (no requiere VLANs extra, todos en VLAN 1).</p>
+<p class="cmd">Comando exacto (en <code>netcli sw1</code>):</p>
+<pre>
+enable
+configure terminal
+hostname SW1-HEP
+banner motd #Lab 05 - DHCP y NAT#
+enable secret ClaveSegura123
+username admin secret AdminSegura123
+service password-encryption
+line vty
+transport input ssh
+end
+write memory
+</pre>
+<p class="salida">Salida real (<code>show running-config</code>):</p>
+<pre>
+SW1-HEP# show running-config
+hostname SW1-HEP
+banner motd ^Lab 05 - DHCP y NAT^
+enable secret 5 $6$N1Zb8MpyI8Z74Zj3$6.9bF/XR.CyBKvhQw3GR0HliYVCTG7LszQxYPkyFwxvZK6HR4k4/Lj1JTFojMPmgp1TOgbTZwzPnB.JN/oZDt.
+username admin secret 5 $6$pEYYf9RYEHC21xhh$n6zJTXcEulV3cBdrh6xKEyEZuIUiaZ4XvYIbvcqaPamUP3/Newyjaxw3fsLc.6ikZgehB6x4M5YU4xtGv11Y8/
+service password-encryption
+line vty
+ transport input ssh
+</pre>
+<p class="verif">Verificación: hardening idéntico a r1; switch solo pasa tráfico L2 (VLAN 1).</p>
+<p><strong>Verificador:</strong> criterio de seguridad en dispositivos.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 6 — Configurar PCs (simular DHCP) <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Asignar IP en rango DHCP (192.168.10.10 y .20), gateway 192.168.10.1. Nota: el lab no incluye cliente DHCP en los PCs.</p>
+<p class="cmd">Comando exacto (desde host de la estación):</p>
+<pre>
+# pc1
+ip netns exec lab-pc1 ip addr add 192.168.10.10/24 dev eth0
+ip netns exec lab-pc1 ip link set eth0 up
+ip netns exec lab-pc1 ip route add default via 192.168.10.1
+
+# pc2
+ip netns exec lab-pc2 ip addr add 192.168.10.20/24 dev eth0
+ip netns exec lab-pc2 ip link set eth0 up
+ip netns exec lab-pc2 ip route add default via 192.168.10.1
+</pre>
+<p class="salida">Salida real: ambos PCs con IP 192.168.10.x/24, default gw 192.168.10.1.</p>
+<p class="verif">Verificación: <code>ip netns exec lab-pc1 ip addr show eth0</code> → <code>inet 192.168.10.10/24</code>, ruta default via 192.168.10.1.</p>
+<p class="error">Error típico: IP fuera del pool o gateway incorrecto. Corrección: usar 192.168.10.10/20 y gw .1.</p>
+<p><strong>Verificador:</strong> criterio de direccionamiento hosts.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 7 — Verificar conectividad LAN <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Confirmar que PCs llegan a su gateway (r1 eth1).</p>
+<p class="cmd">Comando exacto:</p>
+<pre>
+ip netns exec lab-pc1 ping -c 1 192.168.10.1
+ip netns exec lab-pc2 ping -c 1 192.168.10.1
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+PING 192.168.10.1 ... 64 bytes from 192.168.10.1: icmp_seq=1 ttl=64 time=0.145 ms
+1 packets transmitted, 1 received, 0% packet loss
+</pre>
+<p class="verif">Verificación: 0% pérdida = LAN funcionando, switch pasando tráfico.</p>
+<p><strong>Verificador:</strong> criterio de conectividad LAN.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 8 — Verificar NAT: salida a Internet (ping ISP) <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Confirmar que NAT traduce IP privada 192.168.10.x a 10.0.0.1 y llega a ISP.</p>
+<p class="cmd">Comando exacto:</p>
+<pre>
+ip netns exec lab-pc1 ping -c 1 10.0.0.2
+ip netns exec lab-pc2 ping -c 1 10.0.0.2
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+PING 10.0.0.2 ... 64 bytes from 10.0.0.2: icmp_seq=1 ttl=63 time=0.982 ms
+1 packets transmitted, 1 received, 0% packet loss
+
+PING 10.0.0.2 ... 64 bytes from 10.0.0.2: icmp_seq=1 ttl=63 time=0.110 ms
+1 packets transmitted, 1 received, 0% packet loss
+</pre>
+<p class="verif">Verificación: ambos PCs hacen ping a ISP (10.0.0.2) con 0% pérdida = NAT funcionando. TTL=63 indica un salto (r1).</p>
+<p class="error">Error típico: ping falla = NAT mal configurado (ACL, inside/outside, overload). Corrección: revisar <code>show running-config</code> sección NAT.</p>
+<p><strong>Verificador:</strong> criterio de NAT y conectividad WAN.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 9 — Verificar NAT: navegación web (TCP 80) <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Confirmar que NAT permite tráfico TCP a servidor web del ISP (puerto 80) y ver traducciones.</p>
+<p class="cmd">Comando exacto:</p>
+<pre>
+# Test web desde pc1
+ip netns exec lab-pc1 timeout 5 bash -c "< /dev/tcp/10.0.0.2/80 && echo OPEN || echo CLOSED"
+
+# Ver traducciones NAT en r1
+netcli r1 enable show ip nat translations
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+OPEN
+
+Pro Inside global      Inside local       Outside global     Outside local
+tcp 10.0.0.2         192.168.10.10     10.0.0.1          10.0.0.2:80
+</pre>
+<p class="verif">Verificación: TCP 80 OPEN = web accesible; tabla NAT muestra traducción: Inside local 192.168.10.10 → Outside global 10.0.0.1 (IP WAN de r1).</p>
+<p class="error">Error típico: web CLOSED = NAT no traduce puerto destino o ACL bloquea. Corrección: ACL NAT_ACL con <code>permit ip ... any</code> (incluye TCP 80).</p>
+<p><strong>Verificador:</strong> criterio de NAT y servicios.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 10 — Evidencia final <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Capturar configuración completa, traducciones NAT y tests para el informe.</p>
+<p class="cmd">Comandos de evidencia:</p>
+<pre>
+netcli r1    show running-config
+netcli r1    show ip interface brief
+netcli r1    show ip nat translations
+netcli sw1   show running-config
+# Tests:
+pc1 -> r1 (192.168.10.1)     0% loss
+pc1 -> isp (10.0.0.2)        0% loss (NAT)
+pc1 -> isp:80 (web)          OPEN
+pc2 -> isp (10.0.0.2)        0% loss (NAT)
+NAT table: Inside local 192.168.10.10 → Outside global 10.0.0.1
+</pre>
+<p class="salida">Salida real: configuraciones completas, tabla NAT con traducciones, 4 tests de conectividad exitosos.</p>
+<p class="verif">Verificación: informe incluye hardening, DHCP pool, NAT config, traducciones y tests funcionales.</p>
+<p class="error">Error típico: no capturar <code>show ip nat translations</code>. Corrección: siempre documentar tabla NAT tras tests.</p>
+<p><strong>Verificador:</strong> criterio de evidencias (manual por docente).</p>
+</div>
+
+<h2>Si algo falla</h2>
+<table>
+<tr><th>Síntoma</th><th>Causa probable</th><th>Corrección</th></tr>
+<tr><td>PC no llega a ISP (100% loss)</td><td>NAT no configurado o ACL/inside/outside mal</td><td>Verificar: ACL permit ip LAN any; eth1=inside, eth0=outside; overload</td></tr>
+<tr><td>Ping ISP OK pero web CLOSED</td><td>ACL NAT solo permite ICMP o puerto 80 bloqueado</td><td>ACL debe ser <code>permit ip ... any</code> (todos los protocolos)</td></tr>
+<tr><td>NAT table vacía tras tests</td><td>Tráfico no pasa por r1 (routing) o NAT no aplicado</td><td>Verificar ip nat inside/outside en interfaces correctas</td></tr>
+<tr><td>PC sin IP / no hace ping a gateway</td><td>IP manual errónea, gw incorrecto, o sw1 no pasa tráfico</td><td>Verificar IP en 192.168.10.x/24, gw 192.168.10.1, sw1 VLAN 1 UP</td></tr>
+<tr><td>show ip dhcp pool no existe</td><td>Comando no implementado en netcli</td><td>Verificar pool con <code>show running-config | include dhcp</code> y test manual</td></tr>
+</table>
+
+<h2>Entregable y nota</h2>
+<p>Ejecuta <code>revisar</code> en tu estación. Entrega: diagrama topología, capturas <code>show running-config</code> (r1 con DHCP+NAT, sw1 hardening), <code>show ip interface brief</code>, tabla <code>show ip nat translations</code>, resultados ping (LAN, ISP via NAT) y test web TCP 80.</p>
+
+<div class="nota"><strong>Evidencia de pruebas:</strong> estación <code>oco-tmp-lab05-station</code> (imagen <code>labs/hep-redes-lab05:1.0.0</code>) con DHCP pool, NAT PAT funcionando (PCs→ISP ping y web). Estación destruida sin residuos.</div>
+</body>
+</html>

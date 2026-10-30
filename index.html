@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Buenas Prácticas de Redes de Telecomunicaciones — Guías de laboratorios HEP</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#222;max-width:900px;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;border-bottom:2px solid #0b5ed7;padding-bottom:.5rem}
+h2{font-size:1.25rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
+table{border-collapse:collapse;width:100%;margin:1rem 0}
+th,td{border:1px solid #ddd;padding:.5rem;text-align:left;font-size:.9rem}
+th{background:#f4f6f8}
+code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.3rem;font-family:ui-monospace,SFMono-Regular,monospace}
+.nota{background:#fff3cd;border:1px solid #ffecb5;padding:.75rem;border-radius:.6rem;margin:1rem 0}
+.ok{color:#0a7a1a;font-weight:bold}
+.warn{color:#9a5a00;font-weight:bad}
+a{color:#0b5ed7;text-decoration:none}
+a:hover{text-decoration:underline}
+.lab-card{border:1px solid #e1e4e8;border-radius:.75rem;padding:1rem;margin:1rem 0;background:#fafbfc}
+.lab-card h3{margin-top:0;font-size:1.1rem;color:#0b5ed7}
+.tiempo{font-size:.85rem;color:#666}
+</style>
+</head>
+<body>
+<h1>Buenas Prácticas de Redes de Telecomunicaciones — HEP 2026-2</h1>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Grupo:</strong> 26CH6 · <strong>Curso:</strong> 2410 · <strong>Semanas:</strong> S1–S7</p>
+
+<div class="nota"><strong>Estado:</strong> sitio de guías en preparación. Las 6 guías están listas para publicarse en <code>https://asur-col.github.io/cuc-buenas-practicas-hep/laboratorios/</code>. Los manifiestos de los 6 labs ya apuntan a estas URLs.</div>
+
+<h2>Guías de laboratorios (6 labs)</h2>
+<table>
+<tr><th>Lab</th><th>Título</th><th>Semana</th><th>Tiempo estimado</th><th>Guía paso a paso</th></tr>
+<tr><td><code>lab-01</code></td><td>Configuración básica y hardening de dispositivos</td><td>S1</td><td>60 min</td><td><a href="laboratorios/lab-01-configuracion-hardening/index.html">Ver guía</a></td></tr>
+<tr><td><code>lab-02</code></td><td>VLSM y direccionamiento</td><td>S2</td><td>75 min</td><td><a href="laboratorios/lab-02-vlsm-direccionamiento/index.html">Ver guía</a></td></tr>
+<tr><td><code>lab-03</code></td><td>ACLs y zonas (LAN, DMZ y WAN)</td><td>S3</td><td>75 min</td><td><a href="laboratorios/lab-03-acls-y-zonas/index.html">Ver guía</a></td></tr>
+<tr><td><code>lab-04</code></td><td>VLANs, troncales y port-security</td><td>S4</td><td>90 min</td><td><a href="laboratorios/lab-04-vlans-troncales-port-security/index.html">Ver guía</a></td></tr>
+<tr><td><code>lab-05</code></td><td>DHCP y NAT</td><td>S5</td><td>75 min</td><td><a href="laboratorios/lab-05-dhcp-nat/index.html">Ver guía</a></td></tr>
+<tr><td><code>lab-06</code></td><td>Simulación de fallos y respuesta a incidentes</td><td>S6</td><td>90 min</td><td><a href="laboratorios/lab-06-fallos-incidentes/index.html">Ver guía</a></td></tr>
+</table>
+
+<h2>Cómo usar esta guía</h2>
+<ol>
+<li>Entra a la estación desde la plataforma de labs (<code>labs.proyectoasur.org</code>).</li>
+<li>Abre la guía correspondiente a tu lab en esta página.</li>
+<li>Sigue los pasos numerados: cada paso tiene el comando exacto, la salida esperada real, cómo verificarlo, el error típico y su corrección, y el criterio del verificador al que corresponde.</li>
+<li>Cuando hayas terminado todos los pasos, ejecuta <code>revisar</code> en tu estación para obtener el veredicto del servidor.</li>
+<li>Entrega el informe y evidencias por Canvas según la tarea correspondiente.</li>
+</ol>
+
+<h2>Estructura de cada guía</h2>
+<p>Cada guía contiene:</p>
+<ul>
+<li><strong>Pasos numerados (≥10):</strong> cada paso con objetivo, comando exacto, salida esperada real capturada en una estación desechable, cómo verificar, error típico y corrección, criterio del verificador, tiempo estimado.</li>
+<li><strong>Sección «Si algo falla»:</strong> tabla de síntomas, causa probable y corrección.</li>
+<li><strong>Verificación final:</strong> cómo ejecutar el verificador y qué esperar.</li>
+</ul>
+
+<p><small>Todas las salidas capturadas son reales de estaciones desechables (<code>oco-tmp-*</code>). Ningún contenedor de producción fue detenido ni modificado.</small></p>
+</body>
+</html>

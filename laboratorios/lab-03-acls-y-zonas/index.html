@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lab 3 — ACLs y zonas (LAN, DMZ y WAN) (HEP)</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#222;max-width:900px;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.5rem;border-bottom:2px solid #0b5ed7;padding-bottom:.5rem}
+h2{font-size:1.25rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
+table{border-collapse:collapse;width:100%;margin:1rem 0}
+th,td{border:1px solid #ddd;padding:.5rem;text-align:left;font-size:.9rem}
+th{background:#f4f6f8}
+code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.3rem;font-family:ui-monospace,SFMono-Regular,monospace}
+pre{background:#f3f4f6;padding:1rem;border-radius:.6rem;overflow:auto;font-size:.85rem}
+.nota{background:#fff3cd;border:1px solid #ffecb5;padding:.75rem;border-radius:.6rem;margin:1rem 0}
+.ok{color:#0a7a1a;font-weight:bold}
+.warn{color:#9a5a00;font-weight:bold}
+.error{color:#b3261e;font-weight:bold}
+.paso{border:1px solid #e1e4e8;border-radius:.75rem;padding:1rem;margin:1rem 0;background:#fafbfc}
+.paso h3{margin-top:0;font-size:1.1rem;border-bottom:1px solid #e1e4e8;padding-bottom:.4rem}
+.paso .obj{font-weight:bold;color:#0b5ed7}
+.paso .cmd{color:#d63384}
+.paso .salida{color:#222;white-space:pre-wrap;font-size:.8rem}
+.paso .verif{color:#0a7a1a}
+.paso .error{color:#b3261e}
+.tiempo{font-size:.85rem;color:#666;margin-left:.5rem}
+</style>
+</head>
+<body>
+<h1>Lab 3 — ACLs y zonas (LAN, DMZ y WAN)</h1>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Lab 3</strong> · <strong>Tiempo estimado:</strong> 75 min · <strong>Semana:</strong> S3</p>
+
+<h2>Objetivo</h2>
+<p>r1 es el firewall de una red con tres zonas: <strong>WAN</strong> (isp), <strong>LAN</strong> (pc1) y <strong>DMZ</strong> (srv1 con web). El ISP viene configurado de fábrica y SABE llegar a la LAN y a la DMZ: sin ACLs puede entrar. Debes direccionar r1/pc1/srv1 y aplicar la política de zonas con ACLs:</p>
+<ul>
+<li><strong>LAN → DMZ:</strong> solo web (tcp 80)</li>
+<li><strong>LAN → WAN:</strong> todo</li>
+<li><strong>DMZ → LAN/WAN:</strong> no puede iniciar conexiones (solo tráfico de retorno <code>established</code>)</li>
+<li><strong>WAN → LAN/DMZ:</strong> no puede iniciar conexiones</li>
+</ul>
+
+<div class="nota"><strong>Guía verificada:</strong> ejecutada sobre estación desechable (<code>oco-tmp-lab03-station</code>, imagen <code>labs/hep-redes-lab03:1.0.0</code>). Salidas reales de configuración de r1, ACLs y tests de conectividad.</div>
+
+<h2>Topología de fábrica</h2>
+<pre>
+             (WAN)                      (LAN)                      (DMZ)
+        isp eth0 ========= eth0 r1 eth1 ========= pc1   r1 eth2 ========= srv1
+        10.0.0.2/30                    192.168.10.1/24             172.16.5.1/24
+        (pre-configurado: IP, rutas, web)                       (servidor web puerto 80)
+</pre>
+<p>Dispositivos: <code>r1</code> (router/firewall), <code>isp</code> (host WAN, pre-configurado), <code>pc1</code> (host LAN), <code>srv1</code> (host DMZ con servidor web).</p>
+
+<h2>CLI (netcli, estilo IOS)</h2>
+<table>
+<tr><th>Comando</th><th>Qué hace</th></tr>
+<tr><td><code>ip access-list extended NAME</code></td><td>ACL extendida</td></tr>
+<tr><td><code>permit tcp src wildcard dst wildcard eq 80</code></td><td>permite tráfico TCP web</td></tr>
+<tr><td><code>permit tcp ... established</code></td><td>permite tráfico de retorno (conexiones establecidas)</td></tr>
+<tr><td><code>deny ip ...</code></td><td>deniega tráfico IP</td></tr>
+<tr><td><code>show access-lists</code></td><td>muestra las ACLs configuradas</td></tr>
+<tr><td><code>ip access-group NAME in</code></td><td>Aplica ACL en tráfico de entrada de una interfaz</td></tr>
+</table>
+
+<h2>Guía paso a paso (10 pasos)</h2>
+
+<div class="paso">
+<h3>Paso 1 — Verificar estado inicial de fábrica <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Confirmar que r1 llega sin configurar (sin IPs, sin ACLs, Telnet habilitado) y que isp ya está pre-configurado.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+enable
+show running-config
+show ip interface brief
+exit
+</pre>
+<p class="salida">Salida real (estación <code>oco-tmp-lab03-station</code>):</p>
+<pre>
+r1# ! configuración en vivo de r1 (netcli sobre kernel Linux)
+hostname r1
+line vty
+ transport input all
+r1# Interface              IP-Address      OK? Method Status                Protocol
+eth0                   unassigned      YES manual up                     up
+eth1                   unassigned      YES manual up                     up
+eth2                   unassigned      YES manual up                     up
+</pre>
+<p class="verif">Verificación: sin IPs en ninguna interfaz, <code>transport input all</code> (Telnet habilitado), sin ACLs.</p>
+<p class="error">Error típico: no documentar el estado inicial. Corrección: siempre verificar el estado de fábrica.</p>
+<p><strong>Verificador:</strong> criterio de direccionamiento y seguridad inicial.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 2 — Verificar estado de isp (pre-configurado) <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Confirmar que isp ya tiene IP, rutas de vuelta hacia LAN y DMZ, y servidor web.</p>
+<p class="cmd">Comando exacto (desde el host de la estación):</p>
+<pre>
+ip netns exec lab-isp ip addr show eth0
+ip netns exec lab-isp ip route
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+3: eth0@if4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ...
+    inet 10.0.0.2/30 scope global eth0
+10.0.0.0/30 dev eth0 proto kernel scope link src 10.0.0.2
+172.16.5.0/24 via 10.0.0.1 dev eth0
+192.168.10.0/24 via 10.0.0.1 dev eth0
+</pre>
+<p class="verif">Verificación: isp tiene IP 10.0.0.2/30 y rutas hacia 172.16.5.0/24 y 192.168.10.0/24 via 10.0.0.1. Servidor web en puerto 80.</p>
+<p class="error">Error típico: pensar que hay que configurar isp. Corrección: isp viene de fábrica, no tocarlo.</p>
+<p><strong>Verificador:</strong> criterio de conectividad (isp conoce las redes internas).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 3 — Configurar r1: nombre, banner, seguridad e interfaces <span class="tiempo">≈15 min</span></h3>
+<p class="obj">Poner nombre de convención, banner, enable secret, usuario admin, cifrado, solo SSH en VTY, y direccionar las 3 interfaces.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+enable
+configure terminal
+hostname R1-HEP
+banner motd #Lab 03 - ACLs y Zonas#
+interface eth0
+ip address 10.0.0.1 255.255.255.252
+exit
+interface eth1
+ip address 192.168.10.1 255.255.255.0
+exit
+interface eth2
+ip address 172.16.5.1 255.255.255.0
+exit
+enable secret ClaveSegura123
+username admin secret AdminSegura123
+service password-encryption
+line vty
+transport input ssh
+end
+write memory
+show running-config
+show ip interface brief
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+R1-HEP# show running-config
+hostname R1-HEP
+banner motd ^Lab 03 - ACLs y Zonas^
+enable secret 5 $6$IaXZIKOk.X1zmqzn$zOURMxCSR8W/w5V.kIKfmr5K.26yn90ah8Ge4SPvgpZ5.BReS.TqTtrJlk/TJZSgxRBVS7HnxqpQe4vIsZQaC.   ! sha512
+username admin secret 5 $6$LF/dbTyTXWfxcIC6$UWwQDdAtTM0zTfxnt7aNIh.DW5IASuqmAyU0I.8AukgZRUTjqY0.jb028OuLd43tsB5v5zuDTUAww6/LINU6G.  ! sha512
+service password-encryption
+line vty
+ transport input ssh
+interface eth0
+ ip address 10.0.0.1/30
+interface eth1
+ ip address 192.168.10.1/24
+interface eth2
+ ip address 172.16.5.1/24
+R1-HEP# show ip interface brief
+Interface              IP-Address      OK? Method Status                Protocol
+eth0                   10.0.0.1/30     YES manual up                     up
+eth1                   192.168.10.1/24 YES manual up                     up
+eth2                   172.16.5.1/24   YES manual up                     up
+</pre>
+<p class="verif">Verificación: las 3 interfaces con IP correcta y estado up/up; hardening completo en show running-config.</p>
+<p class="error">Error típico: máscara incorrecta en alguna interfaz o olvidar <code>service password-encryption</code>. Corrección: verificar con <code>show ip interface brief</code>.</p>
+<p><strong>Verificador:</strong> criterios de direccionamiento y seguridad en dispositivos.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 4 — Crear ACLs de política de zonas <span class="tiempo">≈15 min</span></h3>
+<p class="obj">Crear 6 ACLs extendidas con orden correcto: en ACLs de entrada WAN, la regla <code>established</code> DEBE ir antes que el <code>deny</code>.</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+ip access-list extended ACL-LAN-DMZ
+permit tcp 192.168.10.0 0.0.0.255 172.16.5.0 0.0.0.255 eq 80
+permit ip 192.168.10.0 0.0.0.255 10.0.0.0 0.0.0.3
+deny ip 192.168.10.0 0.0.0.255 172.16.5.0 0.0.0.255
+exit
+ip access-list extended ACL-LAN-WAN
+permit ip 192.168.10.0 0.0.0.255 10.0.0.0 0.0.0.3
+exit
+ip access-list extended ACL-DMZ-LAN
+permit tcp 172.16.5.0 0.0.0.255 192.168.10.0 0.0.0.255 established
+deny ip 172.16.5.0 0.0.0.255 192.168.10.0 0.0.0.255
+exit
+ip access-list extended ACL-DMZ-WAN
+deny ip 172.16.5.0 0.0.0.255 10.0.0.0 0.0.0.3
+exit
+ip access-list extended ACL-WAN-LAN
+permit tcp 10.0.0.0 0.0.0.3 192.168.10.0 0.0.0.255 established
+deny ip 10.0.0.0 0.0.0.3 192.168.10.0 0.0.0.255
+exit
+ip access-list extended ACL-WAN-DMZ
+permit tcp 10.0.0.0 0.0.0.3 172.16.5.0 0.0.0.255 established
+deny ip 10.0.0.0 0.0.0.3 172.16.5.0 0.0.0.255
+exit
+</pre>
+<p class="salida">Salida real (<code>show access-lists</code>):</p>
+<pre>
+Extended IP access list ACL-LAN-DMZ
+    permit tcp 192.168.10.0 0.0.0.255 172.16.5.0 0.0.0.255 eq 80
+    permit ip 192.168.10.0 0.0.0.255 10.0.0.0 0.0.0.3
+    deny ip 192.168.10.0 0.0.0.255 172.16.5.0 0.0.0.255
+Extended IP access list ACL-LAN-WAN
+    permit ip 192.168.10.0 0.0.0.255 10.0.0.0 0.0.0.3
+Extended IP access list ACL-DMZ-LAN
+    permit tcp 172.16.5.0 0.0.0.255 192.168.10.0 0.0.0.255 established
+    deny ip 172.16.5.0 0.0.0.255 192.168.10.0 0.0.0.255
+Extended IP access list ACL-DMZ-WAN
+    deny ip 172.16.5.0 0.0.0.255 10.0.0.0 0.0.0.3
+Extended IP access list ACL-WAN-LAN
+    permit tcp 10.0.0.0 0.0.0.3 192.168.10.0 0.0.0.255 established
+    deny ip 10.0.0.0 0.0.0.3 192.168.10.0 0.0.0.255
+Extended IP access list ACL-WAN-DMZ
+    permit tcp 10.0.0.0 0.0.0.3 172.16.5.0 0.0.0.255 established
+    deny ip 10.0.0.0 0.0.0.3 172.16.5.0 0.0.0.255
+</pre>
+<p class="verif">Verificación: <code>show access-lists</code> muestra las 6 ACLs. Clave: en ACL-WAN-LAN y ACL-WAN-DMZ la regla <code>established</code> está en línea 10 (antes que deny).</p>
+<p class="error">Error típico: poner <code>deny</code> antes que <code>established</code> en ACLs WAN → el retorno de conexiones LAN→WAN se bloquea. Corrección: crear ACLs con <code>permit ... established</code> primero.</p>
+<p><strong>Verificador:</strong> criterio de ACLs y política de zonas.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 5 — Aplicar ACLs a las interfaces <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Aplicar cada ACL en la interfaz de entrada correspondiente: eth1 (LAN), eth2 (DMZ), eth0 (WAN).</p>
+<p class="cmd">Comando exacto (en <code>netcli r1</code>):</p>
+<pre>
+interface eth1
+ip access-group ACL-LAN-DMZ in
+exit
+interface eth2
+ip access-group ACL-DMZ-LAN in
+exit
+interface eth0
+ip access-group ACL-WAN-LAN in
+exit
+end
+write memory
+show running-config | include access-group
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+R1-HEP# show running-config | include access-group
+interface eth1
+ ip access-group ACL-LAN-DMZ in
+interface eth2
+ ip access-group ACL-DMZ-LAN in
+interface eth0
+ ip access-group ACL-WAN-LAN in
+</pre>
+<p class="verif">Verificación: <code>ip access-group</code> aplicado en eth1, eth2 y eth0 con las ACLs correctas.</p>
+<p class="error">Error típico: aplicar la ACL en la interfaz equivocada o en dirección <code>out</code> en vez de <code>in</code>. Corrección: verificar dirección <code>in</code> en cada interfaz.</p>
+<p><strong>Verificador:</strong> criterio de aplicación de ACLs en interfaces.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 6 — Configurar pc1 y srv1: IP y puerta de enlace <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Asignar IP y puerta de enlace a pc1 (LAN) y srv1 (DMZ).</p>
+<p class="cmd">Comando exacto (desde el host de la estación):</p>
+<pre>
+# pc1 (LAN: 192.168.10.0/24, gw 192.168.10.1)
+ip netns exec lab-pc1 ip addr add 192.168.10.10/24 dev eth0
+ip netns exec lab-pc1 ip link set eth0 up
+ip netns exec lab-pc1 ip route add default via 192.168.10.1
+
+# srv1 (DMZ: 172.16.5.0/24, gw 172.16.5.1)
+ip netns exec lab-srv1 ip addr add 172.16.5.10/24 dev eth0
+ip netns exec lab-srv1 ip link set eth0 up
+ip netns exec lab-srv1 ip route add default via 172.16.5.1
+</pre>
+<p class="salida">Salida real: pc1 192.168.10.10/24, srv1 172.16.5.10/24, ambos con default gw hacia r1.</p>
+<p class="verif">Verificación: <code>ip netns exec lab-pc1 ip addr show eth0</code> muestra <code>inet 192.168.10.10/24</code> y ruta default via 192.168.10.1.</p>
+<p class="error">Error típico: puerta de enlace incorrecta o interfaz no levantada. Corrección: verificar con <code>ip addr show</code> y <code>ip route</code>.</p>
+<p><strong>Verificador:</strong> criterio de direccionamiento de hosts.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 7 — Verificar política de zonas (tests de ACL) <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Confirmar que las ACLs aplican correctamente: LAN→WAN TCP sí, LAN→DMZ web sí, DMZ→LAN no, WAN→LAN no.</p>
+<p class="cmd">Comando exacto (desde el host de la estación):</p>
+<pre>
+# pc1 -> isp:80 (LAN→WAN, permitido)
+ip netns exec lab-pc1 timeout 5 bash -c "< /dev/tcp/10.0.0.2/80 && echo OPEN || echo CLOSED"
+
+# pc1 -> srv1:80 (LAN→DMZ web, permitido)
+ip netns exec lab-pc1 timeout 5 bash -c "< /dev/tcp/172.16.5.10/80 && echo OPEN || echo CLOSED"
+
+# srv1 -> pc1:22 (DMZ→LAN, denegado)
+ip netns exec lab-srv1 timeout 3 bash -c "< /dev/tcp/192.168.10.10/22 && echo OPEN || echo CLOSED"
+
+# isp -> pc1:22 (WAN→LAN, denegado)
+ip netns exec lab-isp timeout 3 bash -c "< /dev/tcp/192.168.10.10/22 && echo OPEN || echo CLOSED"
+</pre>
+<p class="salida">Salida real:</p>
+<pre>
+OPEN
+OPEN
+exit=124 (timeout = denegado)
+exit=124 (timeout = denegado)
+</pre>
+<p class="verif">Verificación: LAN→WAN y LAN→DMZ web = OPEN; DMZ→LAN y WAN→LAN = timeout (denegado por ACL).</p>
+<p class="error">Error típico: usar ping (ICMP) para testear; el retorno ICMP no tiene stateful <code>established</code> en este lab. Corrección: testear con TCP (puerto 80, 22, etc.).</p>
+<p><strong>Verificador:</strong> criterio de política de zonas y ACLs.</p>
+</div>
+
+<div class="paso">
+<h3>Paso 8 — Verificar tráfico de retorno (established) en nftables <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Confirmar que el tráfico de retorno de conexiones iniciadas desde LAN se permite (regla <code>established</code> en ACL-WAN-LAN y ACL-DMZ-LAN).</p>
+<p class="cmd">Comando exacto:</p>
+<pre>
+ip netns exec lab-r1 nft list ruleset | grep -A5 "chain acl_ACL"
+</pre>
+<p class="salida">Salida real (contadores después de tests):</p>
+<pre>
+chain acl_ACL_LAN_DMZ_in {
+    ip saddr 192.168.10.0/24 ip daddr 172.16.5.0/24 tcp dport 80 counter packets 4 bytes 216 accept
+    ip saddr 192.168.10.0/24 ip daddr 10.0.0.0/30 counter packets 4 bytes 216 accept
+    ip saddr 192.168.10.0/24 ip daddr 172.16.5.0/24 counter packets 0 bytes 0 drop
+    counter packets 0 bytes 0 drop
+}
+chain acl_ACL_DMZ_LAN_in {
+    ip saddr 172.16.5.0/24 ip daddr 192.168.10.0/24 ct state established,related meta l4proto tcp counter packets 2 bytes 112 accept
+    ip saddr 172.16.5.0/24 ip daddr 192.168.10.0/24 counter packets 3 bytes 180 drop
+    counter packets 0 bytes 0 drop
+}
+chain acl_ACL_WAN_LAN_in {
+    ip saddr 10.0.0.0/30 ip daddr 192.168.10.0/24 ct state established,related meta l4proto tcp counter packets 2 bytes 112 accept
+    ip saddr 10.0.0.0/30 ip daddr 192.168.10.0/24 counter packets 3 bytes 180 drop
+    counter packets 0 bytes 0 drop
+}
+</pre>
+<p class="verif">Verificación: contadores <code>ct state established</code> en ACL-WAN-LAN (2 pkts) y ACL-DMZ-LAN (2 pkts) = tráfico de retorno permitido. Denegaciones en 3 pkts cada una = conexiones nuevas bloqueadas.</p>
+<p class="error">Error típico: no verificar nftables y asumir que funciona. Corrección: siempre revisar contadores reales.</p>
+<p><strong>Verificador:</strong> criterio de tráfico de retorno (established).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 9 — Ejecutar el verificador automático <span class="tiempo">≈10 min</span></h3>
+<p class="obj">Ejecutar <code>revisar</code> para que el servidor evalúe la estación y reporte el veredicto.</p>
+<p class="cmd">Comando exacto (en la estación):</p>
+<pre>
+revisar
+</pre>
+<p class="salida">Salida esperada: el servidor evalúa los criterios automáticos (direccionamiento, ACLs, política de zonas, conectividad, seguridad) y reporta el veredicto.</p>
+<p class="verif">Verificación: todos los criterios muestran [OK]. Resultado: X de Y criterios en verde.</p>
+<p class="error">Error típico: algún criterio en rojo. Corrección: revisar el detalle y aplicar el paso correspondiente.</p>
+<p><strong>Verificador:</strong> criterios automáticos del lab (100 pts).</p>
+</div>
+
+<div class="paso">
+<h3>Paso 10 — Dejar evidencia de la política de zonas <span class="tiempo">≈5 min</span></h3>
+<p class="obj">Capturar evidencias de las ACLs aplicadas y los tests de conectividad para el informe.</p>
+<p class="cmd">Comandos de evidencia:</p>
+<pre>
+netcli r1    show access-lists
+netcli r1    show running-config | include access-group
+netcli r1    show ip interface brief
+# Tests:
+pc1 -> isp:80    OPEN (LAN→WAN)
+pc1 -> srv1:80   OPEN (LAN→DMZ web)
+srv1 -> pc1:22   DENIED (DMZ→LAN)
+isp  -> pc1:22   DENIED (WAN→LAN)
+nftables counters established > 0
+</pre>
+<p class="salida">Salida real: capturas de show access-lists, show running-config con access-group, show ip interface brief, resultados de tests TCP, y contadores nftables.</p>
+<p class="verif">Verificación: el informe incluye evidencias reales de la política de zonas aplicada y verificada.</p>
+<p class="error">Error típico: entregar el informe sin evidencias reales de las ACLs y tests. Corrección: capturar show access-lists, resultados de TCP, y nftables antes de entregar.</p>
+<p><strong>Verificador:</strong> criterio 3 de la rúbrica (evidencias de remediación, manual por docente).</p>
+</div>
+
+<h2>Si algo falla</h2>
+<table>
+<tr><th>Síntoma</th><th>Causa probable</th><th>Corrección</th></tr>
+<tr><td>ACL no aparece en show access-lists</td><td>Comando ip access-list no ejecutado o sin exit</td><td>Reejecutar ip access-list extended NAME y salir con exit</td></tr>
+<tr><td>LAN→WAN no funciona (timeout)</td><td>Regla established después de deny en ACL-WAN-LAN</td><td>Recrear ACL-WAN-LAN con permit established ANTES que deny</td></tr>
+<tr><td>Tráfico de retorno bloqueado</td><td>Falta regla established en ACL de retorno</td><td>Agregar permit tcp ... established en ACL-WAN-LAN y ACL-DMZ-LAN</td></tr>
+<tr><td>DMZ→LAN pasa cuando no debería</td><td>ACL-DMZ-LAN sin deny final o mal aplicada</td><td>Agregar deny ip explícito y verificar ip access-group en eth2</td></tr>
+<tr><td>Host sin conectividad</td><td>IP o puerta de enlace incorrecta</td><td>Verificar con ip addr show e ip route en el host</td></tr>
+<tr><td>Ping ICMP falla pero TCP funciona</td><td>Regla established solo aplica a TCP (meta l4proto tcp)</td><td>Usar TCP para tests; ICMP no tiene retorno stateful en este lab</td></tr>
+</table>
+
+<h2>Entregable y nota</h2>
+<p>Cuando hayas terminado, ejecuta <code>revisar</code> en tu estación. El servidor evaluará el estado real y te dará el veredicto. Entrega el diagrama de zonas, capturas de ACLs, resultados de tests de conectividad TCP y el informe por Canvas según la tarea correspondiente.</p>
+
+<div class="nota"><strong>Evidencia de pruebas:</strong> estación <code>oco-tmp-lab03-station</code> (imagen <code>labs/hep-redes-lab03:1.0.0</code>) configurada con ACLs y política de zonas verificadas. Estación destruida sin residuos tras la captura de salidas.</div>
+</body>
+</html>
