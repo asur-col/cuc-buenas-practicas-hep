@@ -28,205 +28,219 @@ th,td{border:1px solid var(--border);padding:.6rem;text-align:left}
 th{background:var(--cuc-azul);color:#fff}
 tr:nth-child(even){background:#fafafa}
 footer{text-align:center;color:var(--muted);font-size:.9rem;padding:2rem;border-top:1px solid var(--border);margin-top:2rem}
+.card h3{margin-top:1.4rem}
+pre{background:#1e1e1e;color:#d4d4d4;padding:.8rem 1rem;border-radius:4px;font-size:.85rem;overflow-x:auto;margin:.5rem 0}
+pre code{background:none;color:inherit;padding:0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;background:#eef1f5;padding:.05rem .3rem;border-radius:3px}
+blockquote{margin:1rem 0;padding:.8rem 1rem;background:#fff3cd;border-left:4px solid #ffc107;border-radius:4px;color:#856404}
+blockquote p{margin:0}
+td,th{vertical-align:top}
+.card h3{margin-top:1.4rem}
+pre{background:#1e1e1e;color:#d4d4d4;padding:.8rem 1rem;border-radius:4px;font-size:.85rem;overflow-x:auto;margin:.5rem 0}
+pre code{background:none;color:inherit;padding:0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;background:#eef1f5;padding:.05rem .3rem;border-radius:3px}
+blockquote{margin:1rem 0;padding:.8rem 1rem;background:#fff3cd;border-left:4px solid #ffc107;border-radius:4px;color:#856404}
+blockquote p{margin:0}
+td,th{vertical-align:top}
 </style>
 </head>
 <body>
 <header>
-<h1>Proyecto de Aula 1 — Red de tres sedes (VLSM, troncales, seguridad)</h1>
-<p>Guía de Orientación Metodológica y Proceso de Construcción · Buenas Prácticas de Redes HEP</p>
+<h1>Proyecto de Aula 1 — Red de tres sedes (VLSM, troncales 802.1Q y seguridad)</h1>
+<p>Guía de proceso, requisitos y sintaxis · Buenas Prácticas de Redes HEP</p>
 </header>
 
 <div class="card">
-<h2>Escenario y Alcance</h2>
-<p><strong>Organización:</strong> Clínica del Caribe (3 sedes interconectadas: Sede A Barranquilla, Sede B Cartagena, Sede C Santa Marta).</p>
-<p>El estudiante debe diseñar su propio esquema VLSM a partir de un bloque privado RFC 1918 (sin solapamientos), implementar la topología en <code>netcli</code>, configurar la seguridad en los 6 equipos de red (3 routers y 3 switches), establecer troncales 802.1Q con aislamiento clínico vs administrativo, detectar y corregir las 3 fallas sembradas en la estación, y generar los entregables requeridos en <code>/workspace</code>.</p>
-<div class="nota"><strong>Importante:</strong> Al ser un Proyecto de Aula calificado con rúbrica, esta guía define el proceso metodológico, los criterios de diseño, la sintaxis disponible y los comandos de verificación y diagnóstico, sin revelar las configuraciones específicas que resuelven los criterios ni las fallas sembradas.</div>
-</div>
-
-<div class="card">
-<h2>Metodología de Trabajo Paso a Paso (12 Pasos)</h2>
-
-<div class="paso">
-<h3>Paso 1 — Inspección de la topología y estado inicial <span class="tiempo">≈10 min</span></h3>
-<span class="obj">Objetivo: Reconocer los dispositivos de la estación y verificar las conexiones físicas y namespaces.</span>
-<p>Utilice las herramientas de diagnóstico para examinar la topología base provista en la estación:</p>
-<pre>
-cat /opt/lab/topologia.json | grep -E "dispositivos|interfaces"
-ip netns list
-</pre>
-<p class="verif">Verificación: Identifique los 3 routers (rA, rB, rC), 3 switches (swA, swB, swC) y los hosts de cada sede.</p>
-<p class="error">Error típico: Intentar configurar interfaces sin verificar primero en qué namespace o equipo se encuentra.</p>
-<p><strong>Criterio evaluado:</strong> Topología y reconocimiento de infraestructura.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 2 — Diseño del Plan de Direccionamiento VLSM <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Calcular el plan de subredes asegurando dimensionamiento adecuado y ausencia de solapamiento.</span>
-<p>Defina subredes para cada sede con base en los requerimientos (mínimo 2 VLANs por sede con 2+ PCs por VLAN, más enlaces punto a punto entre routers):</p>
-<pre>
-# Documente en un borrador su tabla VLSM:
-# - Subredes WAN (rA-rB, rB-rC): prefijo /30
-# - Subredes LAN de usuarios: prefijos /26 o /24 según estimación
-</pre>
-<p class="verif">Verificación: Verifique matemáticamente que ninguna red calculada se solape con otra.</p>
-<p class="error">Error típico: Solapamiento de rangos de broadcast o máscara insuficiente para los hosts previstos.</p>
-<p><strong>Criterio evaluado:</strong> VLSM sin solapamientos (Criterio auto 1).</p>
-</div>
-
-<div class="paso">
-<h3>Paso 3 — Endurecimiento y Seguridad Base en Dispositivos de Sede A (rA, swA) <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Aplicar las buenas prácticas de seguridad institucional en rA y swA.</span>
-<p>Ingrese vía <code>netcli rA</code> y <code>netcli swA</code>. Aplique:</p>
-<ul>
-<li>Hostname según convención de sede (p. ej. RA-HEP, SWA-HEP).</li>
-<li>Banner MOTD de advertencia legal.</li>
-<li>Contraseña de modo privilegiado cifrada (<code>enable secret</code>).</li>
-<li>Usuario administrador local con secreto robusto.</li>
-<li>Cifrado de contraseñas de servicio (<code>service password-encryption</code>).</li>
-<li>Restricción de líneas VTY exclusivamente a SSH (<code>transport input ssh</code>).</li>
-</ul>
-<p class="verif">Verificación: Ejecutar <code>show running-config</code> y validar que no existan contraseñas en claro ni transporte telnet.</p>
-<p class="error">Error típico: Olvidar <code>service password-encryption</code> o configurar <code>transport input all</code>.</p>
-<p><strong>Criterio evaluado:</strong> Seguridad en TODOS los 6 dispositivos (Criterio auto 2).</p>
-</div>
-
-<div class="paso">
-<h3>Paso 4 — Segmentación VLAN y Configuración de swA <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Crear VLANs de sede, asignar puertos de acceso y configurar el enlace troncal 802.1Q hacia el router.</span>
-<p>En el switch de Sede A, configure:</p>
-<pre>
-# En netcli swA:
-# - Creación de VLANs con nombres descriptivos (CLINICA, ADMIN)
-# - Asignación de puertos de acceso a los hosts
-# - Configuración del puerto hacia rA en modo trunk 802.1Q permitiendo las VLANs
-</pre>
-<p class="verif">Verificación: <code>show vlan brief</code> y <code>show interfaces trunk</code>.</p>
-<p class="error">Error típico: Puerto troncal en modo access o VLANs no añadidas a la base de datos de VLANs.</p>
-<p><strong>Criterio evaluado:</strong> Troncales y segmentación (Criterio auto 1).</p>
-</div>
-
-<div class="paso">
-<h3>Paso 5 — Enrutamiento Inter-VLAN (Router-on-a-Stick) en rA <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Configurar subinterfaces 802.1Q en el router para servir como gateway de cada VLAN.</span>
-<p>Configure las subinterfaces correspondientes al troncal con swA, asignando la IP de gateway de cada VLAN:</p>
-<pre>
-# Verifique en el namespace de rA que las subinterfaces estén UP y con direccionamiento:
-ip netns exec lab-rA ip addr show
-</pre>
-<p class="verif">Verificación: Los hosts de la Sede A deben alcanzar la IP de su gateway respectivo mediante ping.</p>
-<p class="error">Error típico: Discrepancia entre el tag 802.1Q de la subinterfaz y la VLAN configurada en el switch.</p>
-<p><strong>Criterio evaluado:</strong> Conectividad y gateways locales.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 6 — Detección y Remediación en Sede B (rB, swB) <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Implementar seguridad, VLANs y corregir la anomalía presente en la configuración de swB.</span>
-<p>Audite la configuración de fábrica de swB y rB. Identifique el estado del enlace troncal y aplique hardening completo en ambos equipos:</p>
-<pre>
-# Diagnóstico en swB:
-netcli swB
-show interfaces trunk
-show running-config
-</pre>
-<p class="verif">Verificación: Asegure que swB tenga su interfaz troncal en modo trunk 802.1Q con las VLANs autorizadas.</p>
-<p class="error">Error típico: Mantener la interfaz en access VLAN 1 por defecto impidiendo el paso del tráfico multi-VLAN.</p>
-<p><strong>Criterio evaluado:</strong> Detección y corrección de fallas (Criterio auto 3) + Seguridad total.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 7 — Detección y Remediación en Sede C (rC, swC) <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Aplicar hardening integral y corregir las vulnerabilidades de fábrica presentes en rC.</span>
-<p>Audite los parámetros de seguridad en rC:</p>
-<pre>
-# Diagnóstico en rC:
-netcli rC
-show running-config
-# Comprobar estado de service password-encryption y transporte en line vty
-</pre>
-<p class="verif">Verificación: Comprobar que todas las contraseñas figuren cifradas y que Telnet esté deshabilitado.</p>
-<p class="error">Error típico: Dejar la línea VTY con transport input all o sin protección de contraseña/secreto.</p>
-<p><strong>Criterio evaluado:</strong> Corrección de fallas sembradas en rC + Seguridad total.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 8 — Interconexión WAN y Enrutamiento entre Sedes <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Configurar direccionamiento WAN en los enlaces punto a punto y tablas de enrutamiento estático.</span>
-<p>Configure las rutas estáticas en rA, rB y rC para asegurar visibilidad entre las sedes. Audite la tabla de rutas de rA:</p>
-<pre>
-# Comprobar rutas en rA:
-ip netns exec lab-rA ip route
-</pre>
-<p class="verif">Verificación: rA debe contar con rutas explícitas hacia las subredes de la Sede B y la Sede C.</p>
-<p class="error">Error típico: Falta de ruta hacia la Sede C en rA o rutas no bidireccionales.</p>
-<p><strong>Criterio evaluado:</strong> Conectividad inter-sedes y remediación de ruta faltante.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 9 — Configuración de Direccionamiento en Equipos Finales (PCs) <span class="tiempo">≈10 min</span></h3>
-<span class="obj">Objetivo: Asignar IP, máscara y default gateway a cada PC de las 3 sedes.</span>
-<p>Asigne las IPs de acuerdo a su diseño VLSM en los namespaces correspondientes (pcA1..pcA4, pcB1..pcB4, pcC1..pcC4):</p>
-<pre>
-# Comprobar conectividad desde host:
-ip netns exec lab-pcA1 ping -c 2 <IP_GATEWAY>
-</pre>
-<p class="verif">Verificación: Cada PC responde y se comunica con su gateway local.</p>
-<p class="error">Error típico: Puerta de enlace mal configurada o fuera de la subred del host.</p>
-<p><strong>Criterio evaluado:</strong> Topología funcional con 2+ PCs por VLAN.</p>
-</div>
-
-<div class="paso">
-<h3>Paso 10 — Verificación de Políticas de Aislamiento Inter-VLAN <span class="tiempo">≈10 min</span></h3>
-<span class="obj">Objetivo: Garantizar el aislamiento estricto entre el tráfico clínico y el administrativo.</span>
-<p>Compruebe que un equipo de la VLAN clínica no pueda alcanzar a un equipo de la VLAN administrativa:</p>
-<pre>
-# Prueba de aislamiento:
-ip netns exec lab-pcA1 ping -c 1 -W 2 <IP_PCA3_ADMIN>
-# Debe resultar inalcanzable (100% packet loss)
-</pre>
-<p class="verif">Verificación: Pings entre distintas VLANs de la misma sede deben fallar; pings entre sedes en la misma VLAN deben operar.</p>
-<p class="error">Error típico: Permitir enrutamiento indiscriminado entre subinterfaces de usuarios locales.</p>
-<p><strong>Criterio evaluado:</strong> Aislamiento y cumplimiento HIPAA/Ley 1581 (Criterio auto 1).</p>
-</div>
-
-<div class="paso">
-<h3>Paso 11 — Autoevaluación y Diagnóstico con el Verificador <span class="tiempo">≈10 min</span></h3>
-<span class="obj">Objetivo: Ejecutar la herramienta de control local para validar el cumplimiento de los criterios automáticos.</span>
-<p>Ejecute el comando de verificación en la terminal de la estación:</p>
-<pre>
-revisar
-</pre>
-<p class="verif">Verificación: Verifique que los 3 criterios automáticos (Topología/VLSM/Aislamiento, Seguridad Total, Fallas Corregidas) figuren en verde.</p>
-<p class="error">Error típico: Pasar por alto algún switch o router sin hardening o con hostname de fábrica.</p>
-<p><strong>Criterio evaluado:</strong> 60 % de la calificación (Criterios automáticos).</p>
-</div>
-
-<div class="paso">
-<h3>Paso 12 — Generación de Entregables e Informe Técnico <span class="tiempo">≈15 min</span></h3>
-<span class="obj">Objetivo: Elaborar la documentación requerida para la evaluación manual del 40 % restante.</span>
-<p>Genere en el directorio <code>/workspace</code> de la estación los siguientes dos archivos:</p>
-<ul>
-<li><code>/workspace/informe.pdf</code> (≤ 4 páginas): Portada institucional, tabla VLSM detallada (red, máscara, gateway, broadcast, asignación), capturas de pantalla de comandos <code>show</code> y pruebas de conectividad/aislamiento.</li>
-<li><code>/workspace/justificacion_tecnica.txt</code>: Justificación técnica argumentada de la segmentación en términos de seguridad (aislamiento clínico vs administrativo, HIPAA, Ley 1581), rendimiento (dominios de broadcast, QoS), administración y referencias normativas (IEEE 802.1Q, RFC 1918, ISO 27001 A.13.1), junto con los límites declarados de la solución.</li>
-</ul>
-<pre>
-ls -la /workspace/informe.pdf /workspace/justificacion_tecnica.txt
-revisar
-</pre>
-<p class="verif">Verificación: <code>revisar</code> debe certificar 5 de 5 criterios en verde (100 pts).</p>
-<p><strong>Criterio evaluado:</strong> Documentación e informe + Justificación técnica (40 % manual).</p>
-</div>
+<p><strong>Asignatura:</strong> Buenas Prácticas de Redes de Telecomunicaciones (HEP) · <strong>Proyecto de Aula 1</strong> · <strong>Valor:</strong> rúbrica de Canvas (100 pts = 5,0) · <strong>Tiempo estimado:</strong> 180 min · <strong>Individual, sin penalización por tardanza.</strong></p>
+<p>Guía de proceso, requisitos y sintaxis. No trae la solución: te dice qué debes construir, qué mira exactamente el verificador y con qué comandos se hace. El plan de direccionamiento VLSM lo diseñas tú.</p>
+<h2 id="escenario-y-alcance">Escenario y alcance</h2>
+<p><strong>Clínica del Caribe</strong> tiene tres sedes interconectadas: Sede A (Barranquilla), Sede B (Cartagena) y Sede C (Santa Marta). En cada sede hay un router y un switch, y las áreas clínica y administrativa deben quedar en VLANs separadas y aisladas entre sí. Tú diseñas el plan VLSM, construyes la red en <code>netcli</code>, la proteges y entregas dos documentos.</p>
+<ul><li><strong>La estación arranca en blanco.</strong> Los 6 equipos (rA, rB, rC, swA, swB, swC) y los 12 PCs (pcA1–pcA4, pcB1–pcB4, pcC1–pcC4) están de fábrica: sin IP, sin VLANs, sin rutas, sin seguridad. No hay configuración previa ni errores preexistentes que descubrir: construyes todo desde cero.</li><li><strong>Cada intento nuevo arranca la red de fábrica.</strong> Si cierras la sesión o abres un intento nuevo, no se conserva nada de lo que configuraste y debes rehacerlo. Guarda tus comandos en un archivo (por ejemplo <code>/workspace/mis-comandos.sh</code>) y conserva también una copia fuera de la estación para repetirlos rápido.</li><li><strong><code>revisar</code> muestra el detalle de cada criterio.</strong> Corre el mismo chequeo que el servidor y, bajo cada criterio, escribe qué encontró o qué le falta. Léelo: casi siempre dice exactamente qué corregir.</li><li>El verificador acepta <strong>cualquier plan VLSM</strong> que cumpla las propiedades (sin solapamientos, conectividad, aislamiento), con las excepciones fijas de la sección «Requisitos fijos del verificador».</li></ul>
 
 </div>
 
 <div class="card">
-<h2>Si algo falla — Tabla de Diagnóstico Rápido</h2>
-<table>
-<tr><th>Síntoma</th><th>Causa Probable</th><th>Acción Correctiva</th></tr>
-<tr><td>Falla de aislamiento inter-VLAN</td><td>El router reenvía paquetes entre subinterfaces locales</td><td>Verifique las reglas de reenvío y filtrado en el router para bloquear tráfico inter-VLAN local.</td></tr>
-<tr><td>Seguridad total en rojo</td><td>Falta hardening en uno o más equipos</td><td>Revise individualmente los 6 equipos: hostname, enable secret, service password-encryption y line vty transport input ssh.</td></tr>
-<tr><td>Fallas corregidas en rojo</td><td>Alguna de las 3 anomalías sembradas persiste</td><td>Verifique la ruta a sede C en rA, el modo troncal en swB y el cifrado/SSH en rC.</td></tr>
-<tr><td>Documentación en rojo</td><td>Archivo ausente o nombre incorrecto</td><td>Asegure la presencia de <code>/workspace/informe.pdf</code> y <code>/workspace/justificacion_tecnica.txt</code>.</td></tr>
-</table>
+<h2 id="como-se-califica">Cómo se califica</h2>
+<p>Son <strong>5 criterios de 20 puntos</strong> (100 en total). Cada criterio vale 20 o 0. El servidor lee el estado real de tu estación (interfaces, rutas y configuración de <code>netcli</code>), no lo que digas que hiciste.</p>
+<table><thead><tr><th>Criterio (id)</th><th>Qué comprueba</th></tr></thead><tbody><tr><td><code>topologia_conectividad_aislamiento_vlsm</code></td><td>(1) 3 routers y 3 switches, cada switch conectado a un router, y al menos 2 enlaces router-router (ya vienen de fábrica); (2) cada switch con 2 o más VLANs con nombre; (3) en cada sede, 2 o más VLANs con al menos 2 PCs con IP cada una; (4) cada enlace switch-router en <code>switchport mode trunk</code> con VLANs permitidas; (5) sin subredes distintas que se solapen entre sí; (6) ping real entre PCs de sedes distintas; (7) ping fallido entre PCs de VLANs distintas de la misma sede (aislamiento); (8) hay direcciones IP aplicadas.</td></tr><tr><td><code>seguridad_total</code></td><td>En los 6 equipos (rA, rB, rC, swA, swB, swC): hostname distinto del de fábrica, <code>enable secret</code>, <code>service password-encryption</code>, VTY solo SSH y usuario <code>admin</code> con secreto. Basta que un equipo falle para que el criterio quede en rojo.</td></tr><tr><td><code>fallas_corregidas</code></td><td>3 comprobaciones puntuales: (1) rA tiene una ruta estática a la red de la sede C (10.0.2.0); (2) el puerto <code>gi0/0</code> de swB es troncal con las VLANs 30 y 40; (3) rC tiene <code>service password-encryption</code> y VTY solo SSH.</td></tr><tr><td><code>documentacion_informe</code></td><td>Existe el informe en PDF en <code>/workspace</code> (nombres y tamaño abajo). El contenido lo califica el docente.</td></tr><tr><td><code>justificacion_tecnica</code></td><td>Existe la justificación técnica en texto en <code>/workspace</code> (nombres y tamaño abajo). El contenido lo califica el docente.</td></tr></tbody></table>
+<p>El criterio <code>fallas_corregidas</code> no es un «hallazgo» que descubrir: son tres comprobaciones sobre lo que tú construyes. Se cumplen haciendo bien el plan, pero el verificador busca esos valores exactos (ver siguiente sección).</p>
+
+</div>
+
+<div class="card">
+<h2 id="requisitos-fijos-del-verificador">Requisitos fijos del verificador</h2>
+<blockquote><p><strong>Requisitos fijos del verificador.</strong> El verificador busca estos nombres, valores y formas exactos. Si difieren aunque sea en una letra, el criterio queda en rojo aunque la red «funcione».</p></blockquote>
+<ul><li><strong>Sede C y ruta de rA.</strong> La subred de usuarios de la sede C debe estar dentro de <code>10.0.2.0/24</code>, y rA debe tener una ruta estática cuyo destino contenga <code>10.0.2.0</code> (por ejemplo <code>ip route 10.0.2.0 255.255.255.0 &lt;siguiente_salto&gt;</code>). Una ruta solo a <code>10.0.2.64/26</code>, por ejemplo, no contiene el texto <code>10.0.2.0</code> y deja el criterio en rojo.</li><li><strong>swB usa las VLANs 30 y 40.</strong> Sus puertos de acceso de PCs van en VLAN 30 y VLAN 40, y su puerto <code>gi0/0</code> (el enlace hacia rB) debe quedar en <code>switchport mode trunk</code> con <code>switchport trunk allowed vlan 30,40</code>. Para swA y swC eliges tus propios IDs de VLAN.</li><li><strong>rC con endurecimiento completo:</strong> <code>service password-encryption</code> y <code>transport input ssh</code> en las VTY.</li><li><strong>En los 6 equipos</strong> (rA, rB, rC, swA, swB, swC) debe haber, sin excepción: <code>hostname</code> distinto del de fábrica (no puede seguir siendo <code>rA</code>, <code>swB</code>, etc.; convención sugerida <code>RA-HEP</code>, <code>SWA-HEP</code>); <code>enable secret &lt;clave&gt;</code>; <code>service password-encryption</code>; <code>line vty 0 4</code> con <code>transport input ssh</code>; y <code>username admin secret &lt;clave&gt;</code> (el usuario se llama exactamente <code>admin</code>, con secreto no vacío).</li><li><strong>Informe PDF:</strong> <code>/workspace/informe.pdf</code> (también se aceptan <code>informe_tecnico.pdf</code>, <code>documentacion.pdf</code>, <code>pa1-informe.pdf</code>); debe pesar más de 100 bytes.</li><li><strong>Justificación técnica:</strong> <code>/workspace/justificacion_tecnica.txt</code> (también se aceptan <code>justificacion.txt</code>, <code>tecnica.txt</code>, <code>pa1-justificacion.txt</code>); debe pesar más de 50 bytes. Usa siempre los nombres principales.</li></ul>
+
+</div>
+
+<div class="card">
+<h2 id="topologia-de-fabrica">Topología de fábrica</h2>
+<pre><code>          (enlace rA-rB)          (enlace rB-rC)
+        rA eth0 ========= eth0 rB eth1 ========= eth0 rC
+          |                         |
+        eth1                      eth2
+          |                         |
+        swA gi0/0               swB gi0/0   swC gi0/0
+          |  (troncal 802.1Q sede A)        (troncal 802.1Q sede C)
+      gi0/1 gi0/2           gi0/1 gi0/2   gi0/1 gi0/2
+      pcA1 pcA2             pcB1 pcB2     pcC1 pcC2
+      gi0/3 gi0/4           gi0/3 gi0/4   gi0/3 gi0/4
+      pcA3 pcA4             pcB3 pcB4     pcC3 pcC4</code></pre>
+<p>Enlaces físicos (los que usarás, con el nombre exacto de cada interfaz):</p>
+<table><thead><tr><th>Enlace</th><th>Extremo 1</th><th>Extremo 2</th></tr></thead><tbody><tr><td>rA — rB</td><td>rA <code>eth0</code></td><td>rB <code>eth0</code></td></tr><tr><td>rB — rC</td><td>rB <code>eth1</code></td><td>rC <code>eth0</code></td></tr><tr><td>rA — swA (troncal)</td><td>rA <code>eth1</code></td><td>swA <code>gi0/0</code></td></tr><tr><td>rB — swB (troncal)</td><td>rB <code>eth2</code></td><td>swB <code>gi0/0</code></td></tr><tr><td>rC — swC (troncal)</td><td>rC <code>eth1</code></td><td>swC <code>gi0/0</code></td></tr><tr><td>PCs de cada sede</td><td><code>eth0</code> de cada PC</td><td>switch de la sede: pc1 en <code>gi0/1</code>, pc2 en <code>gi0/2</code>, pc3 en <code>gi0/3</code>, pc4 en <code>gi0/4</code></td></tr></tbody></table>
+<p>Cada sede necesita <strong>2 VLANs con 2 PCs cada una</strong>. Reparte los cuatro PCs: por ejemplo, pc1 y pc2 en una VLAN y pc3 y pc4 en la otra. Si dejas un PC sin IP o sin asignar a una VLAN, el criterio de topología queda en rojo.</p>
+
+</div>
+
+<div class="card">
+<h2 id="cli-de-netcli-estilo-ios">CLI de netcli (estilo IOS)</h2>
+<p>Entra a un router o switch con <code>netcli &lt;dispositivo&gt;</code> (por ejemplo <code>netcli rA</code>). Los comandos se aplican en vivo sobre el kernel y se guardan al instante; <code>write memory</code> es un hábito, no un requisito.</p>
+<table><thead><tr><th>Comando</th><th>Modo</th><th>Qué hace</th></tr></thead><tbody><tr><td><code>enable</code></td><td>usuario</td><td>pasa a modo privilegiado (<code>rA#</code>)</td></tr><tr><td><code>configure terminal</code></td><td>privilegiado</td><td>modo de configuración global</td></tr><tr><td><code>hostname &lt;nombre&gt;</code></td><td>config</td><td>renombra el equipo</td></tr><tr><td><code>banner motd #&lt;texto&gt;#</code></td><td>config</td><td>banner de acceso restringido</td></tr><tr><td><code>enable secret &lt;clave&gt;</code></td><td>config</td><td>contraseña de modo privilegiado (se guarda cifrada)</td></tr><tr><td><code>username admin secret &lt;clave&gt;</code></td><td>config</td><td>usuario administrador local con secreto</td></tr><tr><td><code>service password-encryption</code></td><td>config</td><td>cifra las contraseñas guardadas</td></tr><tr><td><code>line vty 0 4</code></td><td>config</td><td>entra a configurar las VTY</td></tr><tr><td><code>transport input ssh</code></td><td>config-line</td><td>solo SSH en VTY (sin Telnet)</td></tr><tr><td><code>vlan &lt;N&gt;</code></td><td>config (switch)</td><td>crea la VLAN N y entra a su submodo</td></tr><tr><td><code>name &lt;texto&gt;</code></td><td>config-vlan</td><td>nombre de la VLAN (obligatorio: sin nombre no cuenta)</td></tr><tr><td><code>interface &lt;ifaz&gt;</code></td><td>config</td><td>entra a configurar una interfaz (<code>eth0</code>, <code>gi0/1</code>…)</td></tr><tr><td><code>ip address &lt;IP&gt; &lt;máscara&gt;</code></td><td>config-if (router)</td><td>asigna IP con máscara decimal (255.255.255.252)</td></tr><tr><td><code>no ip address</code></td><td>config-if</td><td>quita la IP</td></tr><tr><td><code>no shutdown</code></td><td>config-if</td><td>levanta la interfaz (ya vienen levantadas; útil como seguro)</td></tr><tr><td><code>switchport mode access</code></td><td>config-if (switch)</td><td>puerto de acceso</td></tr><tr><td><code>switchport access vlan &lt;N&gt;</code></td><td>config-if (switch)</td><td>puerto de acceso en la VLAN N</td></tr><tr><td><code>switchport mode trunk</code></td><td>config-if (switch)</td><td>puerto troncal 802.1Q</td></tr><tr><td><code>switchport trunk allowed vlan &lt;N,M&gt;</code></td><td>config-if (switch)</td><td>VLANs del troncal, separadas por coma y sin espacios</td></tr><tr><td><code>ip route &lt;red&gt; &lt;máscara&gt; &lt;siguiente_salto&gt;</code></td><td>config (router)</td><td>ruta estática</td></tr><tr><td><code>ip access-list extended &lt;NOMBRE&gt;</code></td><td>config (router)</td><td>crea un ACL (admite <code>permit</code> y <code>deny</code>)</td></tr><tr><td><code>ip access-group &lt;NOMBRE&gt; in</code></td><td>config-if</td><td>aplica el ACL a una interfaz (ver aislamiento)</td></tr><tr><td><code>write memory</code></td><td>privilegiado</td><td>confirma y guarda</td></tr><tr><td><code>show running-config</code></td><td>privilegiado</td><td>configuración viva</td></tr><tr><td><code>show ip interface brief</code></td><td>privilegiado</td><td>estado de las interfaces</td></tr><tr><td><code>show ip route</code></td><td>privilegiado</td><td>tabla de rutas</td></tr><tr><td><code>show vlan brief</code></td><td>privilegiado</td><td>VLANs del switch</td></tr><tr><td><code>show interfaces trunk</code></td><td>privilegiado</td><td>puertos que operan como troncal (las VLANs permitidas se ven en <code>show running-config</code>)</td></tr><tr><td><code>end</code> / <code>exit</code></td><td>cualquiera</td><td>sale del modo actual</td></tr></tbody></table>
+<p>No existen en <code>netcli</code>: <code>ping</code> (se prueba desde los PCs), <code>ip default-gateway</code> (los PCs usan <code>ip route add default via ...</code>), <code>line console</code> ni contraseña de línea (<code>password</code>, que se ignora) y subinterfaces (se crean con <code>ip</code>, Paso 6). El verificador no mira nada de eso: no pierdas tiempo con ellos.</p>
+
+</div>
+
+<div class="card">
+<h2 id="proceso-paso-a-paso">Proceso paso a paso</h2>
+<h3>Paso 1 — Reconoce la estación (≈10 min)</h3>
+<pre><code>netcli                    # lista los dispositivos y sus interfaces
+ip netns list             # un namespace lab-&lt;equipo&gt; por dispositivo</code></pre>
+<p>Verificación: ves rA, rB, rC, swA, swB, swC y los 12 PCs. Todo está sin configurar.</p>
+<h3>Paso 2 — Diseña tu plan VLSM (≈20 min)</h3>
+<p>Antes de teclear nada, escribe tu tabla (red, máscara, gateway, rango, broadcast) para:</p>
+<ul><li>los dos enlaces punto a punto rA—rB y rB—rC (prefijo /30);</li><li>las 2 VLANs de usuarios de cada sede (dimensiónalas según los PCs, con holgura);</li><li>la restricción fija: la sede C vive dentro de <code>10.0.2.0/24</code>.</li></ul>
+<p>Verificación: ninguna red de la tabla se solapa con otra. Es la base del criterio de topología (propiedad 5) y la tabla va en el informe.</p>
+<h3>Paso 3 — Seguridad en los 6 equipos (≈20 min)</h3>
+<p>En cada router y switch, aplica lo mismo (cambia el hostname y las claves):</p>
+<pre><code>netcli rA
+enable
+configure terminal
+hostname &lt;HOSTNAME&gt;
+banner motd #Acceso restringido#
+enable secret &lt;CLAVE_ENABLE&gt;
+username admin secret &lt;CLAVE_ADMIN&gt;
+service password-encryption
+line vty 0 4
+transport input ssh
+end
+write memory</code></pre>
+<p>Repite en rB, rC, swA, swB y swC. Con un solo equipo que falte, <code>seguridad_total</code> queda en rojo.</p>
+<p>Verificación: <code>show running-config</code> en cada equipo; el hostname ya no es el de fábrica y no aparece Telnet.</p>
+<h3>Paso 4 — VLANs, puertos de acceso y troncal en cada switch (≈25 min)</h3>
+<p>En swA, swB y swC (en swB las VLANs son 30 y 40):</p>
+<pre><code>netcli swB
+enable
+configure terminal
+vlan &lt;VLAN1&gt;
+name &lt;NOMBRE1&gt;
+exit
+vlan &lt;VLAN2&gt;
+name &lt;NOMBRE2&gt;
+exit
+interface gi0/1
+switchport mode access
+switchport access vlan &lt;VLAN1&gt;
+exit
+interface gi0/2
+switchport mode access
+switchport access vlan &lt;VLAN1&gt;
+exit
+interface gi0/3
+switchport mode access
+switchport access vlan &lt;VLAN2&gt;
+exit
+interface gi0/4
+switchport mode access
+switchport access vlan &lt;VLAN2&gt;
+exit
+interface gi0/0
+switchport mode trunk
+switchport trunk allowed vlan &lt;VLAN1&gt;,&lt;VLAN2&gt;
+end
+write memory</code></pre>
+<p>Verificación: <code>show vlan brief</code> (cada VLAN con su nombre y sus 2 puertos) y <code>show interfaces trunk</code> (gi0/0 aparece como troncal); en <code>show running-config</code> el puerto debe mostrar <code>switchport trunk allowed vlan</code> con tus dos VLANs.</p>
+<h3>Paso 5 — Enlaces entre routers y rutas estáticas (≈20 min)</h3>
+<p>Primero las IP de los enlaces punto a punto y después las rutas (el kernel rechaza una ruta cuyo siguiente salto aún no es alcanzable):</p>
+<pre><code>netcli rB
+enable
+configure terminal
+interface eth0
+ip address &lt;IP_RB_ETH0&gt; &lt;MASCARA_30&gt;
+no shutdown
+exit
+interface eth1
+ip address &lt;IP_RB_ETH1&gt; &lt;MASCARA_30&gt;
+no shutdown
+exit
+ip route &lt;RED_SEDE_A&gt; &lt;MASCARA&gt; &lt;IP_RA_ETH0&gt;
+ip route &lt;RED_SEDE_C&gt; &lt;MASCARA&gt; &lt;IP_RC_ETH0&gt;
+end
+write memory</code></pre>
+<p>Cada router necesita ruta a las LAN de las otras dos sedes. Recuerda el requisito fijo: rA debe tener una ruta cuyo destino contenga <code>10.0.2.0</code>, con la sede C dentro de <code>10.0.2.0/24</code>.</p>
+<p>Verificación: <code>show ip route</code> en cada router.</p>
+<h3>Paso 6 — Gateways de cada VLAN: router-on-a-stick (≈25 min)</h3>
+<p><code>netcli</code> no soporta subinterfaces, así que se crean con <code>ip</code> dentro del namespace del router, desde la terminal de la estación (no desde <code>netcli</code>). Hay una subinterfaz por VLAN, con el ID de VLAN como etiqueta 802.1Q, sobre la interfaz física que va al switch:</p>
+<table><thead><tr><th>Router</th><th>Interfaz física hacia el switch</th></tr></thead><tbody><tr><td>rA</td><td><code>eth1</code></td></tr><tr><td>rB</td><td><code>eth2</code></td></tr><tr><td>rC</td><td><code>eth1</code></td></tr></tbody></table>
+<p>Por cada VLAN de la sede (ejemplo en rA; usa <code>eth2</code> en rB):</p>
+<pre><code>sudo ip netns exec lab-rA ip link add link eth1 name eth1.&lt;VLAN&gt; type vlan id &lt;VLAN&gt;
+sudo ip netns exec lab-rA ip link set eth1.&lt;VLAN&gt; up
+sudo ip netns exec lab-rA ip addr add &lt;IP_GATEWAY&gt;/&lt;PREFIJO&gt; dev eth1.&lt;VLAN&gt;</code></pre>
+<p>El ID de la etiqueta debe ser el mismo de la VLAN en el switch. Repite para la otra VLAN, y para rB (<code>eth2</code>) y rC (<code>eth1</code>).</p>
+<p>Verificación:</p>
+<pre><code>sudo ip netns exec lab-rA ip -br addr</code></pre>
+<h3>Paso 7 — Configura los PCs (≈15 min)</h3>
+<p>Los PCs son consolas Linux: <code>netcli pcA1</code> abre una shell dentro de su namespace (la interfaz es siempre <code>eth0</code>). En cada uno de los 12 PCs:</p>
+<pre><code>netcli pcA1
+ip addr add &lt;IP&gt;/&lt;PREFIJO&gt; dev eth0
+ip link set eth0 up
+ip route add default via &lt;IP_GATEWAY_DE_SU_VLAN&gt;
+exit</code></pre>
+<p>El gateway es la IP de la subinterfaz de la VLAN del PC. Los PCs de una misma VLAN comparten gateway y subred. Sin ruta por defecto, el ping entre sedes falla. La configuración de los PCs no se guarda: está en el kernel.</p>
+<p>Verificación (desde un PC): <code>ping -c2 &lt;IP_GATEWAY&gt;</code> y luego <code>ping -c2 &lt;IP_PC_EN_OTRA_SEDE&gt;</code>.</p>
+<h3>Paso 8 — Aísla las VLANs de una misma sede (≈20 min)</h3>
+<p>Con las subinterfaces, el router enruta entre las VLANs de la misma sede: de fábrica un PC de una VLAN alcanza al de la otra. El criterio exige lo contrario: el ping entre VLANs de la misma sede debe fallar, y el tráfico entre sedes debe seguir funcionando. Hay que bloquear el reenvío entre las subinterfaces de usuarios de cada router (rA, rB y rC).</p>
+<p><strong>Opción A: nftables en el namespace del router.</strong></p>
+<pre><code>sudo ip netns exec lab-rA nft add table ip lab_aislamiento
+sudo ip netns exec lab-rA nft add chain ip lab_aislamiento forward &#x27;{ type filter hook forward priority 0; policy accept; }&#x27;
+sudo ip netns exec lab-rA nft add rule ip lab_aislamiento forward iif &lt;SUBIF_VLAN1&gt; oif &lt;SUBIF_VLAN2&gt; drop
+sudo ip netns exec lab-rA nft add rule ip lab_aislamiento forward iif &lt;SUBIF_VLAN2&gt; oif &lt;SUBIF_VLAN1&gt; drop</code></pre>
+<p><strong>Opción B: ACL de netcli</strong> (una por subinterfaz, que bloquea el destino de la otra VLAN de la sede). La máscara es la wildcard (0.0.0.63 para un /26):</p>
+<pre><code>netcli rA
+enable
+configure terminal
+ip access-list extended &lt;ACL_VLAN1&gt;
+deny ip any &lt;RED_VLAN2&gt; &lt;WILDCARD_VLAN2&gt;
+permit ip any any
+exit
+interface &lt;SUBIF_VLAN1&gt;
+ip access-group &lt;ACL_VLAN1&gt; in
+exit</code></pre>
+<p>Repite con una ACL para <code>&lt;SUBIF_VLAN2&gt;</code> que bloquee <code>&lt;RED_VLAN1&gt;</code>. Haz una de las dos opciones por router, no mezcles.</p>
+<p>Verificación: desde un PC de la VLAN 1, <code>ping -c1 &lt;IP_PC_VLAN2&gt;</code> debe fallar; <code>ping -c1 &lt;IP_PC_OTRA_SEDE&gt;</code> debe responder.</p>
+<h3>Paso 9 — Comprobaciones puntuales de fallas_corregidas (≈10 min)</h3>
+<p>Revisa uno por uno los tres valores fijos:</p>
+<ul><li>En rA (<code>netcli rA</code>, <code>enable</code>): <code>show ip route</code> debe mostrar una ruta con <code>10.0.2.0</code>.</li><li>En swB (<code>netcli swB</code>, <code>enable</code>): <code>show running-config</code> debe mostrar, bajo <code>interface gi0/0</code>, <code>switchport mode trunk</code> y <code>switchport trunk allowed vlan 30,40</code>.</li><li>En rC (<code>netcli rC</code>, <code>enable</code>): <code>show running-config</code> debe mostrar <code>service password-encryption</code> y <code>transport input ssh</code>.</li></ul>
+<h3>Paso 10 — Revisa y entrega (≈25 min)</h3>
+<p>Ejecuta <code>revisar</code> en la estación y corrige lo que muestre el detalle de cada criterio hasta ver los 5 en verde:</p>
+<pre><code>revisar</code></pre>
+<p>Después crea los entregables (siguiente sección) y vuelve a ejecutar <code>revisar</code>.</p>
+
+</div>
+
+<div class="card">
+<h2 id="entregables-en-workspace">Entregables en /workspace</h2>
+<p>Dos archivos:</p>
+<ul><li><code>/workspace/informe.pdf</code> (máximo 4 páginas): portada, tabla VLSM legible (red, máscara, rango usable, broadcast por sede y VLAN), capturas reales de la estación (<code>show ip route</code>, <code>show vlan brief</code>, <code>show interfaces trunk</code>, pruebas de ping y de aislamiento) y convenciones de nombres (equipos como RA-HEP, VLANs como CLINICA y ADMIN).</li><li><code>/workspace/justificacion_tecnica.txt</code>: por qué segmentas en VLANs, en términos de seguridad (aislamiento clínico y administrativo, Ley 1581), rendimiento (dominios de broadcast separados) y administración (diagnóstico por VLAN, incorporar nuevas sedes), con referencias a IEEE 802.1Q, RFC 1918 e ISO 27001 A.13.1, y los límites de tu diseño (carga máxima, fallo tolerado, qué no tolera).</li></ul>
+<p>El verificador solo comprueba que existan con los nombres indicados y que pesen más de 100 bytes (PDF) y más de 50 bytes (texto). El contenido lo califica el docente con la rúbrica de Canvas (tarea 37512). Si no tienes cómo generar o subir el PDF a la estación, pregunta a tu docente por el medio que corresponde.</p>
+<pre><code>ls -la /workspace/informe.pdf /workspace/justificacion_tecnica.txt
+revisar</code></pre>
+
+</div>
+
+<div class="card">
+<h2 id="si-algo-falla-diagnostico-rapido">Si algo falla — diagnóstico rápido</h2>
+<table><thead><tr><th>Problema</th><th>Causa probable</th><th>Qué hacer</th></tr></thead><tbody><tr><td><code>topologia_conectividad_aislamiento_vlsm</code> en rojo</td><td>Algún PC sin IP o sin VLAN, VLAN sin nombre, troncal sin VLANs, subredes que se solapan, rutas incompletas, PC sin ruta por defecto, VLANs no aisladas</td><td>Lee el detalle de <code>revisar</code>: nombra los primeros problemas.</td></tr><tr><td>Ping entre sedes falla</td><td>Falta una ruta en algún router o el PC no tiene ruta por defecto</td><td><code>show ip route</code> en los 3 routers y <code>ip route</code> en el PC.</td></tr><tr><td>Ping entre VLANs de la misma sede responde</td><td>El aislamiento del Paso 8 no está aplicado en ese router</td><td>Revisa la regla o el ACL de las dos subinterfaces.</td></tr><tr><td><code>seguridad_total</code> en rojo</td><td>Falta algún elemento en alguno de los 6 equipos</td><td>El detalle dice qué equipo y qué falta; revisa hostname, secret, encryption, VTY y <code>admin</code>.</td></tr><tr><td><code>fallas_corregidas</code> en rojo</td><td>Falta la ruta con <code>10.0.2.0</code> en rA, el troncal de swB sin 30,40 o rC sin encryption/SSH</td><td>Repite el Paso 9.</td></tr><tr><td><code>documentacion_informe</code> o <code>justificacion_tecnica</code> en rojo</td><td>Archivo ausente, nombre distinto o demasiado pequeño</td><td><code>ls -la /workspace</code> y compara con los nombres exactos.</td></tr><tr><td>Empiezo y no hay nada</td><td>Cada intento arranca la red de fábrica</td><td>Vuelve a ejecutar tus comandos guardados.</td></tr></tbody></table>
 </div>
 
 <footer>
